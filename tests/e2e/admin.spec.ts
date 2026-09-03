@@ -66,6 +66,13 @@ test("authenticated admin shell exposes publishing sections", async ({
     updatedAt: "2026-09-01",
   };
   let deleteRequest: Record<string, string> | undefined;
+  let appearancePublish:
+    | {
+        contentType?: string;
+        payload?: Record<string, unknown>;
+        expectedSha?: string;
+      }
+    | undefined;
   let savedPostBody = "";
   await page.route("**/api/session", (route) =>
     route.fulfill({
@@ -133,6 +140,41 @@ test("authenticated admin shell exposes publishing sections", async ({
       }),
     }),
   );
+  await page.route("**/api/published/appearance", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        content: {
+          schemaVersion: 1,
+          defaultTheme: "light",
+          allowVisitorSelection: true,
+          visitorThemes: [
+            "light",
+            "dark",
+            "midnight",
+            "hacker",
+            "sakura",
+            "system",
+          ],
+          resumeThemeMode: "light",
+        },
+        path: "apps/site/src/data/appearance.json",
+        sha: "c".repeat(40),
+      }),
+    }),
+  );
+  await page.route("**/api/publish", (route) => {
+    appearancePublish = route.request().postDataJSON();
+    return route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        commitUrl: "https://github.test/commit",
+        version: "d".repeat(40),
+        contentSha: "e".repeat(40),
+        path: "apps/site/src/data/appearance.json",
+      }),
+    });
+  });
   await page.route("**/api/publish/media/posts/**", (route) =>
     route.fulfill({
       contentType: "application/json",
@@ -274,6 +316,25 @@ test("authenticated admin shell exposes publishing sections", async ({
     "background-color",
     "rgb(2, 5, 3)",
   );
+  await expect(
+    page.getByRole("heading", { name: "Visitor theme controls" }),
+  ).toBeVisible();
+  await page.getByLabel("Default public theme").selectOption("midnight");
+  await page.getByLabel("Résumé appearance").selectOption("active");
+  await page.getByLabel("Dracula", { exact: true }).check();
+  await page.getByRole("button", { name: "Publish public themes" }).click();
+  await expect(
+    page.getByText(/Public themes published\./),
+  ).toBeVisible();
+  expect(appearancePublish).toMatchObject({
+    contentType: "appearance",
+    expectedSha: "c".repeat(40),
+    payload: {
+      defaultTheme: "midnight",
+      resumeThemeMode: "active",
+    },
+  });
+  expect(appearancePublish?.payload?.visitorThemes).toContain("dracula");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute(
     "data-admin-theme",

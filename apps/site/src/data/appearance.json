@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "defaultTheme": "light",
+  "allowVisitorSelection": true,
+  "visitorThemes": ["light", "dark", "midnight", "hacker", "sakura", "system"],
+  "resumeThemeMode": "light"
+}

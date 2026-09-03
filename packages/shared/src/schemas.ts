@@ -20,6 +20,34 @@ export const socialLinkSchema = z.object({
   url: safeUrl,
 });
 
+export const publicThemeIds = [
+  "light",
+  "dark",
+  "midnight",
+  "hacker",
+  "dracula",
+  "nord",
+  "solarized",
+  "ocean",
+  "sakura",
+  "espresso",
+  "synthwave",
+  "amber",
+  "blueprint",
+] as const;
+export const publicThemeSchema = z.enum(publicThemeIds);
+export const publicThemeChoiceSchema = z.enum([...publicThemeIds, "system"]);
+export const appearanceSchema = z.object({
+  schemaVersion: z.literal(1).default(1),
+  defaultTheme: publicThemeChoiceSchema.default("light"),
+  allowVisitorSelection: z.boolean().default(true),
+  visitorThemes: z
+    .array(publicThemeChoiceSchema)
+    .max(publicThemeIds.length + 1)
+    .default(["light", "dark", "midnight", "hacker", "sakura", "system"]),
+  resumeThemeMode: z.enum(["light", "active", "default"]).default("light"),
+});
+
 export const siteProfileSchema = z.object({
   schemaVersion: z.literal(1).default(1),
   fullName: z.string().min(1).max(100),
@@ -144,17 +172,27 @@ export const resumeSchema = z.object({
 
 export const draftSchema = z.object({
   id: z.string().uuid(),
-  contentType: z.enum(["post", "project", "homepage", "resume", "settings"]),
+  contentType: z.enum([
+    "post",
+    "project",
+    "homepage",
+    "resume",
+    "settings",
+    "appearance",
+  ]),
   contentKey: z.string().min(1).max(160),
   payload: z.unknown(),
   updatedAt: z.string().optional(),
 });
 export const publishPayloadSchema = z.object({
-  contentType: z.enum(["post", "project", "homepage", "resume"]),
+  contentType: z.enum(["post", "project", "homepage", "resume", "appearance"]),
   payload: z.unknown(),
   expectedSha: z.string().optional(),
 });
 export type SiteProfile = z.infer<typeof siteProfileSchema>;
+export type Appearance = z.infer<typeof appearanceSchema>;
+export type PublicThemeId = z.infer<typeof publicThemeSchema>;
+export type PublicThemeChoice = z.infer<typeof publicThemeChoiceSchema>;
 export type Post = z.infer<typeof postSchema>;
 export type Project = z.infer<typeof projectSchema>;
 export type Resume = z.infer<typeof resumeSchema>;
@@ -173,5 +211,6 @@ export function validateContent(type: string, payload: unknown) {
   if (type === "project") return projectSchema.parse(payload);
   if (type === "homepage") return siteProfileSchema.parse(payload);
   if (type === "resume") return resumeSchema.parse(payload);
+  if (type === "appearance") return appearanceSchema.parse(payload);
   throw new Error("Unsupported content type");
 }

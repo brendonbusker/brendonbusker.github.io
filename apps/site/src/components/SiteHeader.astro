@@ -1,12 +1,17 @@
 ---
-const { current = '' } = Astro.props;
+import type { Appearance } from '@brendon/shared';
+import ThemePicker from './ThemePicker.astro';
+const { current = '', appearance } = Astro.props as { current?: string; appearance: Appearance };
 ---
 <header class="site-header">
   <a class="wordmark" href="/">Brendon Busker</a>
-  <nav aria-label="Primary navigation">
-    <a href="/" aria-current={current === 'home' ? 'page' : undefined}>Home</a>
-    <a href="/blog/" aria-current={current === 'blog' ? 'page' : undefined}>Blog</a>
-    <a href="/projects/" aria-current={current === 'projects' ? 'page' : undefined}>Projects</a>
-    <a href="/resume/" aria-current={current === 'resume' ? 'page' : undefined}>Résumé</a>
-  </nav>
+  <div class="header-actions">
+    <nav aria-label="Primary navigation">
+      <a href="/" aria-current={current === 'home' ? 'page' : undefined}>Home</a>
+      <a href="/blog/" aria-current={current === 'blog' ? 'page' : undefined}>Blog</a>
+      <a href="/projects/" aria-current={current === 'projects' ? 'page' : undefined}>Projects</a>
+      <a href="/resume/" aria-current={current === 'resume' ? 'page' : undefined}>Résumé</a>
+    </nav>
+    <ThemePicker appearance={appearance} />
+  </div>
 </header>

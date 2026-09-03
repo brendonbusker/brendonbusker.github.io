@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import worker, { parseManagedMarkdown, sanitizePostBody } from "./index";
+import worker, {
+  parseManagedMarkdown,
+  sanitizePostBody,
+  serializeContent,
+} from "./index";
 
 const db = {
   prepare: () => ({
@@ -96,6 +100,22 @@ describe("worker security boundaries", () => {
 });
 
 describe("published content parsing", () => {
+  it("serializes public appearance settings to their own managed file", () => {
+    const serialized = serializeContent("appearance", {
+      schemaVersion: 1,
+      defaultTheme: "midnight",
+      allowVisitorSelection: true,
+      visitorThemes: ["light", "midnight", "system"],
+      resumeThemeMode: "active",
+    });
+    expect(serialized.path).toBe("apps/site/src/data/appearance.json");
+    expect(JSON.parse(serialized.content)).toMatchObject({
+      defaultTheme: "midnight",
+      visitorThemes: ["light", "midnight", "system"],
+      resumeThemeMode: "active",
+    });
+  });
+
   it("reads generated post frontmatter and its full body", () => {
     const parsed = parseManagedMarkdown(
       '---\nid: "f3ca8746-060e-4f5f-a70a-776075596c4c"\ntitle: "A note"\nfeatured: true\ncount: 2\ntags: ["one","two"]\n---\n\nFirst paragraph.\n\nSecond paragraph.\n',

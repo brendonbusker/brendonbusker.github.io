@@ -3,6 +3,7 @@ import {
   webLightTheme,
   type Theme,
 } from "@fluentui/react-components";
+import type { PublicThemeId } from "@brendon/shared";
 
 export const ADMIN_THEME_STORAGE_KEY = "brendon-publishing-theme";
 
@@ -25,7 +26,7 @@ type ThemeColors = {
 };
 
 export type AdminThemeDefinition = {
-  id: string;
+  id: PublicThemeId;
   name: string;
   description: string;
   mood: string;

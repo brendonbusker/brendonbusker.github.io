@@ -2,19 +2,67 @@
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import site from '../data/site.json';
+import appearanceData from '../data/appearance.json';
+import { appearanceSchema, publicThemeIds } from '@brendon/shared';
 import '../styles/global.css';
 const { title = site.siteTitle, description = site.siteDescription, current = '', image = '/og.png', article } = Astro.props;
+const appearance = appearanceSchema.parse(appearanceData);
+const themeBootConfig = {
+  ...appearance,
+  publicThemeIds,
+  isResume: current === 'resume',
+};
+const headerAppearance = current === 'resume' && appearance.resumeThemeMode !== 'active'
+  ? { ...appearance, allowVisitorSelection: false }
+  : appearance;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const imageUrl = new URL(image, Astro.site);
 ---
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme={appearance.defaultTheme === 'system' ? 'light' : appearance.defaultTheme} data-theme-preference="default">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#f4f0e8" />
+    <meta name="theme-color" content="#f4f0e8" data-site-theme-color />
+    <script is:inline define:vars={{ themeBootConfig }}>
+      (() => {
+        const storageKey = 'brendon-public-theme';
+        const root = document.documentElement;
+        const config = themeBootConfig;
+        const validThemes = new Set(config.publicThemeIds);
+        const systemTheme = () => matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        const resolve = (choice) => choice === 'system' ? systemTheme() : validThemes.has(choice) ? choice : 'light';
+        const stored = (() => { try { return localStorage.getItem(storageKey) || 'default'; } catch { return 'default'; } })();
+        const allowed = new Set(config.visitorThemes);
+        let preference = config.allowVisitorSelection && (stored === 'default' || allowed.has(stored)) ? stored : 'default';
+        const activeChoice = () => preference === 'default' ? config.defaultTheme : preference;
+        const effectiveTheme = () => {
+          if (config.isResume && config.resumeThemeMode === 'light') return 'light';
+          if (config.isResume && config.resumeThemeMode === 'default') return resolve(config.defaultTheme);
+          return resolve(activeChoice());
+        };
+        const colors = { light: '#f4f0e8', dark: '#181818', midnight: '#090e17', hacker: '#020503', dracula: '#191a26', nord: '#242933', solarized: '#002b36', ocean: '#03131f', sakura: '#fff7f8', espresso: '#1a120d', synthwave: '#10051f', amber: '#120d03', blueprint: '#071d36' };
+        const apply = () => {
+          const theme = effectiveTheme();
+          root.dataset.theme = theme;
+          root.dataset.themePreference = preference;
+          root.style.colorScheme = ['light', 'sakura'].includes(theme) ? 'light' : 'dark';
+          document.querySelector('[data-site-theme-color]')?.setAttribute('content', colors[theme] || colors.light);
+          dispatchEvent(new CustomEvent('site-theme-change', { detail: { theme, preference } }));
+        };
+        window.setSiteThemePreference = (choice) => {
+          preference = choice === 'default' || allowed.has(choice) ? choice : 'default';
+          try { preference === 'default' ? localStorage.removeItem(storageKey) : localStorage.setItem(storageKey, preference); } catch {}
+          apply();
+        };
+        matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+          if (activeChoice() === 'system') apply();
+        });
+        apply();
+      })();
+    </script>
     <link rel="canonical" href={canonical} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="alternate" type="application/rss+xml" title="Blog — Brendon Busker" href="/rss.xml" />
@@ -34,6 +82,6 @@ const imageUrl = new URL(image, Astro.site);
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
-    <div class="site-frame"><SiteHeader current={current} /><main id="main"><slot /></main><SiteFooter /></div>
+    <div class="site-frame"><SiteHeader current={current} appearance={headerAppearance} /><main id="main"><slot /></main><SiteFooter /></div>
   </body>
 </html>

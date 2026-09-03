@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import sanitizeHtml from "sanitize-html";
 import {
+  appearanceSchema,
   draftSchema,
   isAllowedRepositoryPath,
   postSchema,
@@ -41,7 +42,8 @@ interface Env {
   PBKDF2_ITERATIONS: string;
 }
 type Variables = { sessionId: string; csrfHash: string };
-type PublishedType = "homepage" | "resume" | "posts" | "projects";
+type PublishedType =
+  "homepage" | "resume" | "appearance" | "posts" | "projects";
 type GitHubFile = {
   type: "file";
   path: string;
@@ -587,14 +589,16 @@ async function publishedCollection(env: Env, type: "posts" | "projects") {
 app.get("/api/published/:type", async (c) => {
   const type = c.req.param("type") as PublishedType;
   try {
-    if (type === "homepage" || type === "resume") {
-      const path = `apps/site/src/data/${type === "homepage" ? "site" : "resume"}.json`;
+    if (type === "homepage" || type === "resume" || type === "appearance") {
+      const path = `apps/site/src/data/${type === "homepage" ? "site" : type}.json`;
       const file = await githubTextFile(c.env, path);
       const json: unknown = JSON.parse(file.text);
       const content =
         type === "homepage"
           ? siteProfileSchema.parse(json)
-          : resumeSchema.parse(json);
+          : type === "resume"
+            ? resumeSchema.parse(json)
+            : appearanceSchema.parse(json);
       return c.json({ content, path: file.path, sha: file.sha });
     }
     if (type === "posts" || type === "projects")
@@ -614,7 +618,11 @@ app.get("/api/published/:type", async (c) => {
   }
 });
 
-function serializeContent(type: string, payload: any, targetPath?: string) {
+export function serializeContent(
+  type: string,
+  payload: any,
+  targetPath?: string,
+) {
   if (type === "homepage")
     return {
       path: "apps/site/src/data/site.json",
@@ -626,6 +634,12 @@ function serializeContent(type: string, payload: any, targetPath?: string) {
       path: "apps/site/src/data/resume.json",
       content: JSON.stringify(resumeSchema.parse(payload), null, 2) + "\n",
       message: "cms: update web resume",
+    };
+  if (type === "appearance")
+    return {
+      path: "apps/site/src/data/appearance.json",
+      content: JSON.stringify(appearanceSchema.parse(payload), null, 2) + "\n",
+      message: "cms: update public theme settings",
     };
   if (type === "post") {
     const p = postSchema.parse({ ...payload, status: "published" });

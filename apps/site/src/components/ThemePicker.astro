@@ -1,0 +1,87 @@
+---
+import type { Appearance, PublicThemeChoice } from '@brendon/shared';
+
+const { appearance } = Astro.props as { appearance: Appearance };
+const labels: Record<PublicThemeChoice, string> = {
+  light: 'Light',
+  dark: 'Dark',
+  midnight: 'Midnight',
+  hacker: 'Hacker',
+  dracula: 'Dracula',
+  nord: 'Nord',
+  solarized: 'Solarized',
+  ocean: 'Ocean Depths',
+  sakura: 'Sakura',
+  espresso: 'Espresso',
+  synthwave: 'Synthwave',
+  amber: 'Amber CRT',
+  blueprint: 'Blueprint',
+  system: 'Match System',
+};
+---
+{appearance.allowVisitorSelection && (
+  <div class="theme-picker" data-theme-picker>
+    <button class="theme-trigger" type="button" aria-haspopup="menu" aria-expanded="false">
+      <span class="theme-trigger-icon" aria-hidden="true">◐</span>
+      <span data-theme-trigger-label>Theme</span>
+    </button>
+    <div class="theme-menu" role="menu" aria-label="Choose site theme" hidden>
+      <p>Appearance</p>
+      <button type="button" role="menuitemradio" data-theme-choice="default" aria-checked="false">
+        <i class="theme-choice-swatch default-swatch" aria-hidden="true"></i>
+        <span><strong>Site default</strong><small>Chosen by Brendon</small></span>
+      </button>
+      {appearance.visitorThemes.map((choice) => (
+        <button type="button" role="menuitemradio" data-theme-choice={choice} aria-checked="false">
+          <i class={`theme-choice-swatch swatch-${choice}`} aria-hidden="true"></i>
+          <span><strong>{labels[choice]}</strong><small>{choice === 'system' ? 'Follow this device' : 'Use on this browser'}</small></span>
+        </button>
+      ))}
+    </div>
+  </div>
+)}
+
+<script>
+  const picker = document.querySelector<HTMLElement>('[data-theme-picker]');
+  if (picker) {
+    const trigger = picker.querySelector<HTMLButtonElement>('.theme-trigger')!;
+    const menu = picker.querySelector<HTMLElement>('.theme-menu')!;
+    const triggerLabel = picker.querySelector<HTMLElement>('[data-theme-trigger-label]')!;
+    const choices = [...picker.querySelectorAll<HTMLButtonElement>('[data-theme-choice]')];
+    const labelFor = (choice: string) =>
+      choices.find((button) => button.dataset.themeChoice === choice)?.querySelector('strong')?.textContent || 'Theme';
+    const close = () => {
+      menu.hidden = true;
+      trigger.setAttribute('aria-expanded', 'false');
+    };
+    const sync = () => {
+      const preference = document.documentElement.dataset.themePreference || 'default';
+      choices.forEach((button) => button.setAttribute('aria-checked', String(button.dataset.themeChoice === preference)));
+      triggerLabel.textContent = labelFor(preference);
+    };
+    trigger.addEventListener('click', () => {
+      const opening = menu.hidden;
+      menu.hidden = !opening;
+      trigger.setAttribute('aria-expanded', String(opening));
+      if (opening) menu.querySelector<HTMLButtonElement>('[aria-checked="true"]')?.focus();
+    });
+    choices.forEach((button) => button.addEventListener('click', () => {
+      (window as typeof window & { setSiteThemePreference?: (choice: string) => void })
+        .setSiteThemePreference?.(button.dataset.themeChoice || 'default');
+      sync();
+      close();
+      trigger.focus();
+    }));
+    addEventListener('site-theme-change', sync);
+    document.addEventListener('click', (event) => {
+      if (!picker.contains(event.target as Node)) close();
+    });
+    picker.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        close();
+        trigger.focus();
+      }
+    });
+    sync();
+  }
+</script>

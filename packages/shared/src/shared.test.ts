@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  appearanceSchema,
   createSessionTimes,
   csrfHeaderIsValid,
   derivePasswordVerifier,
@@ -50,6 +51,19 @@ describe("content schemas", () => {
   });
   it("validates the structured resume model", () => {
     expect(() => resumeSchema.parse({ fullName: "Brendon" })).toThrow();
+  });
+  it("validates public appearance choices", () => {
+    const appearance = appearanceSchema.parse({
+      schemaVersion: 1,
+      defaultTheme: "midnight",
+      allowVisitorSelection: true,
+      visitorThemes: ["light", "hacker", "system"],
+      resumeThemeMode: "active",
+    });
+    expect(appearance.visitorThemes).toContain("system");
+    expect(() =>
+      appearanceSchema.parse({ ...appearance, defaultTheme: "unknown" }),
+    ).toThrow();
   });
 });
 describe("content utilities", () => {

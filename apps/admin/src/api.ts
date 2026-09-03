@@ -69,7 +69,7 @@ export const draftsApi = {
     }),
 };
 export const publishedApi = {
-  one: <T>(type: "homepage" | "resume") =>
+  one: <T>(type: "homepage" | "resume" | "appearance") =>
     api<PublishedItem<T>>(`/api/published/${type}`),
   collection: <T>(type: "posts" | "projects") =>
     api<{ items: Array<PublishedItem<T>> }>(`/api/published/${type}`),
