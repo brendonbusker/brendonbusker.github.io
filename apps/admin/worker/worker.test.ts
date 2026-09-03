@@ -31,6 +31,9 @@ describe("worker security boundaries", () => {
     expect(res.headers.get("content-security-policy")).toContain(
       "frame-ancestors 'none'",
     );
+    expect(res.headers.get("content-security-policy")).toContain(
+      "img-src 'self' data: blob: https://brendonbusker.github.io",
+    );
     expect(res.headers.get("cache-control")).toBe("no-store");
   });
   it("revalidates the admin shell instead of serving stale editor code", async () => {
