@@ -111,11 +111,20 @@ test("authenticated admin shell exposes publishing sections", async ({
       }),
     }),
   );
+  await page.route("**/api/publish/media/posts/**", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        path: "/uploads/posts/starting-this-site/test-image.webp",
+        alt: "A test editor image",
+      }),
+    }),
+  );
   await page.goto("http://127.0.0.1:5173/");
   await expect(
     page.getByRole("complementary", { name: "Publishing sections" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Posts" }).click();
+  await page.getByRole("button", { name: "Blog" }).click();
   await expect(page.getByText("Start writing…")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Publish", exact: true }),
@@ -128,6 +137,37 @@ test("authenticated admin shell exposes publishing sections", async ({
   await expect(
     page.getByText("This is the complete historical post body."),
   ).toBeVisible();
+  const writingSurface = page.locator(".document-surface");
+  await writingSurface.click();
+  await page.keyboard.press("End");
+  await page.keyboard.type(" Fast typing stays put.", { delay: 5 });
+  await page.waitForTimeout(1500);
+  await expect(writingSurface).toContainText("Fast typing stays put.");
+  await expect(page.getByText("Clipboard", { exact: true })).toBeVisible();
+  await expect(page.getByText("Font", { exact: true })).toBeVisible();
+  await expect(
+    page.locator(".toolbar-group > span", { hasText: "Paragraph" }),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "Insert" }).click();
+  page.once("dialog", (dialog) => dialog.accept("A test editor image"));
+  await page.locator('input[type="file"][accept^="image/"]').setInputFiles({
+    name: "test.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
+  const insertedImage = writingSurface.getByRole("img", {
+    name: "A test editor image",
+  });
+  await expect(insertedImage).toBeVisible();
+  await expect(insertedImage).toHaveAttribute(
+    "data-cms-path",
+    "/uploads/posts/starting-this-site/test-image.webp",
+  );
+  await insertedImage.click();
+  await expect(writingSurface.locator("[data-resize-handle]")).toHaveCount(6);
   await page
     .getByRole("complementary", { name: "Publishing sections" })
     .getByRole("button", { name: "Projects", exact: true })

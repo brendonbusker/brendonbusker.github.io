@@ -35,10 +35,16 @@ export function ProjectEditor() {
       )?.content ?? newProject(),
     [contentKey, published],
   );
+  const sourceVersion =
+    published.find(
+      ({ content }) =>
+        content.slug === contentKey || content.id === contentKey,
+    )?.sha ?? "";
   const { value, setValue, state, reset, loading } = useDraft<Project>(
     "project",
     contentKey,
     initial,
+    sourceVersion,
   );
   const [preview, setPreview] = useState(false);
   const [message, setMessage] = useState("");

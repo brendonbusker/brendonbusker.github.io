@@ -417,8 +417,28 @@ main {
   border-bottom: 1px solid var(--rule);
 }
 .prose img {
+  display: block;
   max-width: 100%;
   height: auto;
+  margin: 2rem auto;
+}
+.prose mark {
+  padding: 0.04em 0.12em;
+}
+.prose s {
+  text-decoration-thickness: 1px;
+}
+.prose ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+.prose ul[data-type="taskList"] li {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+}
+.prose ul[data-type="taskList"] label {
+  padding-top: 0.25rem;
 }
 .post-nav {
   display: grid;

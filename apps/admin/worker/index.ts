@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import sanitizeHtml from "sanitize-html";
 import {
   draftSchema,
   isAllowedRepositoryPath,
@@ -464,6 +465,76 @@ export function parseManagedMarkdown(markdown: string) {
   return { data, body: normalized.slice(end + 5).trim() };
 }
 
+export function sanitizePostBody(body: string) {
+  if (!/^\s*</.test(body)) return sanitizeMarkdown(body).trim();
+  return sanitizeHtml(body, {
+    allowedTags: [
+      "p",
+      "h1",
+      "h2",
+      "h3",
+      "strong",
+      "em",
+      "u",
+      "s",
+      "sub",
+      "sup",
+      "mark",
+      "span",
+      "ul",
+      "ol",
+      "li",
+      "blockquote",
+      "pre",
+      "code",
+      "a",
+      "img",
+      "table",
+      "thead",
+      "tbody",
+      "tr",
+      "th",
+      "td",
+      "br",
+      "hr",
+      "label",
+      "input",
+      "div",
+    ],
+    allowedAttributes: {
+      "*": ["style"],
+      a: ["href", "title", "target", "rel"],
+      img: ["src", "alt", "title", "width", "height"],
+      table: ["class"],
+      th: ["colspan", "rowspan", "colwidth"],
+      td: ["colspan", "rowspan", "colwidth"],
+      ul: ["data-type"],
+      li: ["data-type", "data-checked"],
+      input: ["type", "checked", "disabled"],
+    },
+    allowedStyles: {
+      "*": {
+        "text-align": [/^(?:left|center|right|justify)$/],
+        "font-family": [
+          /^(?:Arial|Georgia|Segoe UI|Times New Roman|Courier New)(?:, ?(?:sans-serif|serif|monospace))?$/,
+        ],
+        "font-size": [/^(?:10|11|12|14|16|18|24|32|48)px$/],
+        color: [/^#[0-9a-fA-F]{6}$/],
+        "background-color": [/^#[0-9a-fA-F]{6}$/],
+        "line-height": [/^(?:1|1\.15|1\.5|2)$/],
+      },
+    },
+    allowedSchemes: ["http", "https", "mailto"],
+    allowedSchemesByTag: { img: ["http", "https"] },
+    transformTags: {
+      a: (_tagName, attribs) => ({
+        tagName: "a",
+        attribs: { ...attribs, rel: "noopener noreferrer" },
+      }),
+    },
+  }).trim();
+}
+
 async function publishedCollection(env: Env, type: "posts" | "projects") {
   const directory = `apps/site/src/content/${type}`;
   const listing = await githubContent(env, directory);
@@ -541,7 +612,7 @@ function serializeContent(type: string, payload: any, targetPath?: string) {
   if (type === "post") {
     const p = postSchema.parse({ ...payload, status: "published" });
     const date = p.publishedAt.slice(0, 10);
-    const content = `---\nid: ${escapeYaml(p.id)}\ntitle: ${escapeYaml(p.title)}\nslug: ${escapeYaml(p.slug)}\npublishedAt: ${date}\nupdatedAt: ${p.updatedAt.slice(0, 10)}\nexcerpt: ${escapeYaml(p.excerpt || "")}\nstatus: published\n---\n\n${sanitizeMarkdown(p.body).trim()}\n`;
+    const content = `---\nid: ${escapeYaml(p.id)}\ntitle: ${escapeYaml(p.title)}\nslug: ${escapeYaml(p.slug)}\npublishedAt: ${date}\nupdatedAt: ${p.updatedAt.slice(0, 10)}\nexcerpt: ${escapeYaml(p.excerpt || "")}\nstatus: published\n---\n\n${sanitizePostBody(p.body)}\n`;
     return {
       path: targetPath || `apps/site/src/content/posts/${date}-${p.slug}.md`,
       content,

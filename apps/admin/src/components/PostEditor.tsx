@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Field,
@@ -13,6 +13,10 @@ import {
 import {
   ArrowUndo20Regular,
   ArrowRedo20Regular,
+  ClipboardPaste20Regular,
+  Copy20Regular,
+  Cut20Regular,
+  PaintBrush20Regular,
   TextBold20Regular,
   TextItalic20Regular,
   TextUnderline20Regular,
@@ -23,6 +27,16 @@ import {
   TextAlignLeft20Regular,
   TextAlignCenter20Regular,
   TextAlignRight20Regular,
+  TextAlignJustify20Regular,
+  TextIndentIncrease20Regular,
+  TextIndentDecrease20Regular,
+  TextQuote20Regular,
+  TextSubscript20Regular,
+  TextSuperscript20Regular,
+  FontIncrease20Regular,
+  FontDecrease20Regular,
+  Highlight20Regular,
+  TextColor20Regular,
   Code20Regular,
   Link20Regular,
   Image20Regular,
@@ -33,6 +47,7 @@ import {
   Dismiss20Regular,
   Delete20Regular,
   Add20Regular,
+  LineHorizontal120Regular,
 } from "@fluentui/react-icons";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -44,8 +59,10 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import TextAlign from "@tiptap/extension-text-align";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
-import TurndownService from "turndown";
-import { gfm } from "turndown-plugin-gfm";
+import { TextStyleKit } from "@tiptap/extension-text-style";
+import Highlight from "@tiptap/extension-highlight";
+import Subscript from "@tiptap/extension-subscript";
+import Superscript from "@tiptap/extension-superscript";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 import {
@@ -60,16 +77,57 @@ import { api, draftsApi, publishedApi, type PublishedItem } from "../api";
 import { optimizeImage } from "../media";
 import { SaveStatus } from "./SaveStatus";
 
-const turndown = new TurndownService({
-  headingStyle: "atx",
-  bulletListMarker: "-",
-  codeBlockStyle: "fenced",
+const PUBLIC_SITE_URL = "https://brendonbusker.github.io";
+const FONT_SIZES = [10, 11, 12, 14, 16, 18, 24, 32, 48];
+const CmsImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      cmsPath: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-cms-path"),
+        renderHTML: (attributes) =>
+          attributes.cmsPath
+            ? { "data-cms-path": String(attributes.cmsPath) }
+            : {},
+      },
+    };
+  },
 });
-turndown.use(gfm);
-turndown.addRule("underline", {
-  filter: ["u"],
-  replacement: (content) => content,
-});
+
+function publicAssetUrl(src: string) {
+  if (!src.startsWith("/")) return src;
+  return new URL(src, PUBLIC_SITE_URL).href;
+}
+
+function bodyToEditorHtml(body: string) {
+  const html = /^\s*</.test(body) ? body : (marked.parse(body) as string);
+  const document = new DOMParser().parseFromString(
+    DOMPurify.sanitize(html),
+    "text/html",
+  );
+  document.querySelectorAll("img").forEach((image) => {
+    const src = image.getAttribute("src");
+    if (src) image.setAttribute("src", publicAssetUrl(src));
+  });
+  return document.body.innerHTML;
+}
+
+function editorHtmlForStorage(html: string) {
+  const document = new DOMParser().parseFromString(
+    DOMPurify.sanitize(html),
+    "text/html",
+  );
+  document.querySelectorAll("img").forEach((image) => {
+    const cmsPath = image.getAttribute("data-cms-path");
+    const src = image.getAttribute("src") || "";
+    if (cmsPath) image.setAttribute("src", cmsPath);
+    else if (src.startsWith(`${PUBLIC_SITE_URL}/`))
+      image.setAttribute("src", new URL(src).pathname);
+    image.removeAttribute("data-cms-path");
+  });
+  return DOMPurify.sanitize(document.body.innerHTML);
+}
 function Tool({
   label,
   icon,
@@ -110,10 +168,13 @@ export function PostEditor() {
   const [syncing, setSyncing] = useState(true);
   const [search, setSearch] = useState("");
   const [preview, setPreview] = useState(false);
+  const [ribbonTab, setRibbonTab] = useState("home");
   const [publishing, setPublishing] = useState(false);
   const [message, setMessage] = useState("");
   const imageRef = useRef<HTMLInputElement>(null);
   const loadedRevision = useRef(-1);
+  const objectUrls = useRef<string[]>([]);
+  const formatBrush = useRef<Record<string, unknown> | null>(null);
   const initial = useMemo(
     () =>
       draftPosts.find(({ key }) => key === selected)?.post ??
@@ -122,6 +183,10 @@ export function PostEditor() {
       newPost(),
     [draftPosts, publishedPosts, scratchPosts, selected],
   );
+  const sourceVersion =
+    publishedPosts.find(({ content }) => content.id === selected)?.sha ??
+    draftPosts.find(({ key }) => key === selected)?.updatedAt ??
+    "";
   const {
     value: post,
     setValue,
@@ -130,23 +195,7 @@ export function PostEditor() {
     reset,
     loading,
     revision,
-  } = useDraft<Post>("post", selected, initial);
-  const refreshDrafts = useCallback(async () => {
-    const { drafts } = await draftsApi.list();
-    const parsed = drafts
-      .filter(({ content_type }) => content_type === "post")
-      .flatMap(({ content_key, payload_json, updated_at }) => {
-        try {
-          const value = JSON.parse(payload_json) as Post;
-          return value && typeof value.id === "string"
-            ? [{ key: content_key, post: value, updatedAt: updated_at }]
-            : [];
-        } catch {
-          return [];
-        }
-      });
-    setDraftPosts(parsed);
-  }, []);
+  } = useDraft<Post>("post", selected, initial, sourceVersion);
   useEffect(() => {
     let alive = true;
     Promise.all([publishedApi.collection<Post>("posts"), draftsApi.list()])
@@ -182,9 +231,6 @@ export function PostEditor() {
       alive = false;
     };
   }, []);
-  useEffect(() => {
-    if (state === "saved") void refreshDrafts();
-  }, [refreshDrafts, state]);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -193,7 +239,23 @@ export function PostEditor() {
           HTMLAttributes: { rel: "noopener noreferrer" },
         },
       }),
-      Image.configure({ allowBase64: false }),
+      CmsImage.configure({
+        allowBase64: false,
+        resize: {
+          enabled: true,
+          directions: [
+            "left",
+            "right",
+            "top-left",
+            "top-right",
+            "bottom-left",
+            "bottom-right",
+          ],
+          minWidth: 120,
+          minHeight: 80,
+          alwaysPreserveAspectRatio: true,
+        },
+      }),
       Table.configure({ resizable: true }),
       TableRow,
       TableHeader,
@@ -201,32 +263,38 @@ export function PostEditor() {
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       TaskList,
       TaskItem.configure({ nested: true }),
+      TextStyleKit,
+      Highlight.configure({ multicolor: true }),
+      Subscript,
+      Superscript,
     ],
-    content: post.body
-      ? DOMPurify.sanitize(marked.parse(post.body) as string)
-      : "<p>Start writing…</p>",
+    content: post.body ? bodyToEditorHtml(post.body) : "<p>Start writing…</p>",
     editorProps: {
       attributes: { class: "document-surface", "aria-label": "Post body" },
     },
-    onUpdate: ({ editor }) =>
+    onUpdate: ({ editor }) => {
+      const body = editorHtmlForStorage(editor.getHTML());
       setValue((p) => ({
         ...p,
-        body: turndown.turndown(editor.getHTML()),
-        excerpt:
-          p.excerpt || excerptFromMarkdown(turndown.turndown(editor.getHTML())),
-      })),
+        body,
+        excerpt: p.excerpt || excerptFromMarkdown(body),
+        updatedAt: new Date().toISOString(),
+      }));
+    },
   });
   useEffect(() => {
     if (!editor || editor.isDestroyed || loadedRevision.current === revision)
       return;
     loadedRevision.current = revision;
     editor.commands.setContent(
-      post.body
-        ? DOMPurify.sanitize(marked.parse(post.body) as string)
-        : "<p>Start writing…</p>",
+      post.body ? bodyToEditorHtml(post.body) : "<p>Start writing…</p>",
       { emitUpdate: false },
     );
   }, [editor, post.body, revision]);
+  useEffect(
+    () => () => objectUrls.current.forEach((url) => URL.revokeObjectURL(url)),
+    [],
+  );
   const setField = <K extends keyof Post>(key: K, value: Post[K]) =>
     setValue((current) => ({
       ...current,
@@ -298,7 +366,7 @@ export function PostEditor() {
       date: string;
     }> = draftPosts.map(({ key, post: content, updatedAt }) => ({
       key,
-      content,
+      content: key === selected ? post : content,
       status: "Draft",
       date: updatedAt.slice(0, 10),
     }));
@@ -330,6 +398,117 @@ export function PostEditor() {
     if (href)
       editor?.chain().focus().extendMarkRange("link").setLink({ href }).run();
   };
+  const copySelection = async (cut = false) => {
+    if (!editor) return;
+    const { from, to, empty } = editor.state.selection;
+    if (empty) {
+      setMessage("Select some text before using Copy or Cut.");
+      return;
+    }
+    const text = editor.state.doc.textBetween(from, to, "\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      if (cut) editor.chain().focus().deleteSelection().run();
+      setMessage(cut ? "Selection cut to the clipboard." : "Selection copied.");
+    } catch {
+      setMessage(
+        "Clipboard access is unavailable. Use Ctrl+C or Ctrl+X instead.",
+      );
+    }
+  };
+  const pasteText = async () => {
+    if (!editor) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      editor.chain().focus().insertContent(text).run();
+      setMessage("Clipboard text pasted.");
+    } catch {
+      setMessage("Clipboard access is unavailable. Use Ctrl+V instead.");
+    }
+  };
+  const useFormatBrush = () => {
+    if (!editor) return;
+    if (!formatBrush.current) {
+      formatBrush.current = {
+        textStyle: editor.getAttributes("textStyle"),
+        bold: editor.isActive("bold"),
+        italic: editor.isActive("italic"),
+        underline: editor.isActive("underline"),
+        strike: editor.isActive("strike"),
+        subscript: editor.isActive("subscript"),
+        superscript: editor.isActive("superscript"),
+        highlight: editor.getAttributes("highlight"),
+      };
+      setMessage(
+        "Formatting copied. Select the destination text, then click Format painter again.",
+      );
+      return;
+    }
+    const format = formatBrush.current;
+    editor.commands.unsetAllMarks();
+    const textStyle = format.textStyle as Record<string, string>;
+    if (Object.values(textStyle).some(Boolean))
+      editor.commands.setMark("textStyle", textStyle);
+    if (format.bold) editor.commands.setBold();
+    if (format.italic) editor.commands.setItalic();
+    if (format.underline) editor.commands.setUnderline();
+    if (format.strike) editor.commands.setStrike();
+    if (format.subscript) editor.commands.setSubscript();
+    if (format.superscript) editor.commands.setSuperscript();
+    const highlight = format.highlight as { color?: string };
+    if (highlight.color)
+      editor.commands.setHighlight({ color: highlight.color });
+    editor.commands.focus();
+    formatBrush.current = null;
+    setMessage("Formatting applied.");
+  };
+  const changeCase = (kind: string) => {
+    if (!editor || !kind) return;
+    const { from, to, empty } = editor.state.selection;
+    if (empty) {
+      setMessage("Select text before changing its case.");
+      return;
+    }
+    const source = editor.state.doc.textBetween(from, to, " ");
+    const changed =
+      kind === "upper"
+        ? source.toUpperCase()
+        : kind === "lower"
+          ? source.toLowerCase()
+          : source.replace(/\b\p{L}/gu, (letter) => letter.toUpperCase());
+    editor.chain().focus().insertContentAt({ from, to }, changed).run();
+  };
+  const resizeText = (direction: 1 | -1) => {
+    if (!editor) return;
+    const current = Number.parseInt(
+      editor.getAttributes("textStyle").fontSize || "16",
+      10,
+    );
+    const currentIndex = FONT_SIZES.reduce(
+      (best, size, index) =>
+        Math.abs(size - current) < Math.abs(FONT_SIZES[best]! - current)
+          ? index
+          : best,
+      0,
+    );
+    const next =
+      FONT_SIZES[
+        Math.max(0, Math.min(FONT_SIZES.length - 1, currentIndex + direction))
+      ];
+    editor.chain().focus().setFontSize(`${next}px`).run();
+  };
+  const indentList = (direction: 1 | -1) => {
+    if (!editor) return;
+    const item = editor.isActive("taskItem") ? "taskItem" : "listItem";
+    if (direction > 0) editor.chain().focus().sinkListItem(item).run();
+    else editor.chain().focus().liftListItem(item).run();
+  };
+  const choosePost = async (key: string) => {
+    if (key === selected) return;
+    if (state === "unsaved" || state === "saving") await save();
+    setSelected(key);
+    setPreview(false);
+  };
   const uploadImage = async (file?: File) => {
     if (!file || !editor) return;
     const alt = prompt(
@@ -350,16 +529,26 @@ export function PostEditor() {
         `/api/publish/media/posts/${slug}`,
         { method: "POST", body: form },
       );
+      const previewUrl = URL.createObjectURL(optimized);
+      objectUrls.current.push(previewUrl);
       editor
         .chain()
         .focus()
-        .setImage({ src: result.path, alt: result.alt })
+        .setImage({
+          src: previewUrl,
+          alt: result.alt,
+          cmsPath: result.path,
+        } as Parameters<typeof editor.commands.setImage>[0])
         .run();
-      setMessage("Image published and inserted into this draft.");
+      setMessage(
+        "Image inserted. Drag it to move it, or select it and use the resize handles.",
+      );
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Image upload failed.",
       );
+    } finally {
+      if (imageRef.current) imageRef.current.value = "";
     }
   };
   return (
@@ -373,15 +562,18 @@ export function PostEditor() {
       />
       <aside className="document-list">
         <header>
-          <h2>Posts</h2>
+          <h2>Blog</h2>
           <Button
             appearance="primary"
             icon={<Add20Regular />}
             onClick={() => {
-              const next = newPost();
-              setScratchPosts((items) => ({ ...items, [next.id]: next }));
-              setSelected(next.id);
-              setPreview(false);
+              void (async () => {
+                if (state === "unsaved" || state === "saving") await save();
+                const next = newPost();
+                setScratchPosts((items) => ({ ...items, [next.id]: next }));
+                setSelected(next.id);
+                setPreview(false);
+              })();
             }}
           >
             New
@@ -389,13 +581,13 @@ export function PostEditor() {
         </header>
         <div className="list-search">
           <Input
-            placeholder="Search posts"
-            aria-label="Search posts"
+            placeholder="Search blog posts"
+            aria-label="Search blog posts"
             value={search}
             onChange={(_, data) => setSearch(data.value)}
           />
         </div>
-        {syncing && <p className="list-status">Loading GitHub posts…</p>}
+        {syncing && <p className="list-status">Loading blog posts…</p>}
         {!syncing && listEntries.length === 0 && (
           <p className="list-status">No posts match this search.</p>
         )}
@@ -403,10 +595,7 @@ export function PostEditor() {
           <button
             key={entry.key}
             className={`document-row ${entry.key === selected ? "active" : ""}`}
-            onClick={() => {
-              setSelected(entry.key);
-              setPreview(false);
-            }}
+            onClick={() => void choosePost(entry.key)}
           >
             <span
               className={`document-icon ${entry.status === "Published" ? "published" : ""}`}
@@ -426,7 +615,7 @@ export function PostEditor() {
         <header className="editor-titlebar">
           <div>
             <span className="breadcrumb">
-              Posts / {post.title || "Untitled post"}
+              Blog / {post.title || "Untitled post"}
             </span>
             <SaveStatus state={state} />
           </div>
@@ -489,161 +678,423 @@ export function PostEditor() {
         </div>
         {!preview && (
           <>
-            <TabList className="ribbon-tabs" defaultSelectedValue="home">
+            <TabList
+              className="ribbon-tabs"
+              selectedValue={ribbonTab}
+              onTabSelect={(_, data) => setRibbonTab(String(data.value))}
+            >
               <Tab value="home">Home</Tab>
               <Tab value="insert">Insert</Tab>
             </TabList>
             <Toolbar className="editor-ribbon" aria-label="Document formatting">
-              <div className="toolbar-group">
-                <Tool
-                  label="Undo (Ctrl+Z)"
-                  icon={<ArrowUndo20Regular />}
-                  onClick={() => editor?.chain().focus().undo().run()}
-                  disabled={!editor?.can().undo()}
-                />
-                <Tool
-                  label="Redo"
-                  icon={<ArrowRedo20Regular />}
-                  onClick={() => editor?.chain().focus().redo().run()}
-                  disabled={!editor?.can().redo()}
-                />
-                <span>History</span>
-              </div>
-              <div className="toolbar-group">
-                <select
-                  aria-label="Paragraph style"
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    v === "p"
-                      ? editor?.chain().focus().setParagraph().run()
-                      : editor
+              {ribbonTab === "home" ? (
+                <>
+                  <div className="toolbar-group">
+                    <Tool
+                      label="Undo (Ctrl+Z)"
+                      icon={<ArrowUndo20Regular />}
+                      onClick={() => editor?.chain().focus().undo().run()}
+                      disabled={!editor?.can().undo()}
+                    />
+                    <Tool
+                      label="Redo (Ctrl+Y)"
+                      icon={<ArrowRedo20Regular />}
+                      onClick={() => editor?.chain().focus().redo().run()}
+                      disabled={!editor?.can().redo()}
+                    />
+                    <span>History</span>
+                  </div>
+                  <div className="toolbar-group toolbar-group-wide">
+                    <div className="ribbon-control-stack clipboard-tools">
+                      <Tool
+                        label="Paste"
+                        icon={<ClipboardPaste20Regular />}
+                        onClick={() => void pasteText()}
+                      />
+                      <Tool
+                        label="Cut"
+                        icon={<Cut20Regular />}
+                        onClick={() => void copySelection(true)}
+                      />
+                      <Tool
+                        label="Copy"
+                        icon={<Copy20Regular />}
+                        onClick={() => void copySelection()}
+                      />
+                      <Tool
+                        label="Format painter"
+                        icon={<PaintBrush20Regular />}
+                        active={Boolean(formatBrush.current)}
+                        onClick={useFormatBrush}
+                      />
+                    </div>
+                    <span>Clipboard</span>
+                  </div>
+                  <div className="toolbar-group font-group">
+                    <div className="ribbon-control-stack">
+                      <div className="ribbon-row">
+                        <select
+                          aria-label="Font family"
+                          defaultValue=""
+                          onChange={(event) =>
+                            event.target.value
+                              ? editor
+                                  ?.chain()
+                                  .focus()
+                                  .setFontFamily(event.target.value)
+                                  .run()
+                              : editor?.chain().focus().unsetFontFamily().run()
+                          }
+                        >
+                          <option value="">Theme font</option>
+                          <option value="Arial">Arial</option>
+                          <option value="Georgia">Georgia</option>
+                          <option value="Segoe UI">Segoe UI</option>
+                          <option value="Times New Roman">
+                            Times New Roman
+                          </option>
+                          <option value="Courier New">Courier New</option>
+                        </select>
+                        <select
+                          className="font-size-select"
+                          aria-label="Font size"
+                          defaultValue="16"
+                          onChange={(event) =>
+                            editor
+                              ?.chain()
+                              .focus()
+                              .setFontSize(`${event.target.value}px`)
+                              .run()
+                          }
+                        >
+                          {FONT_SIZES.map((size) => (
+                            <option key={size} value={size}>
+                              {size}
+                            </option>
+                          ))}
+                        </select>
+                        <Tool
+                          label="Increase font size"
+                          icon={<FontIncrease20Regular />}
+                          onClick={() => resizeText(1)}
+                        />
+                        <Tool
+                          label="Decrease font size"
+                          icon={<FontDecrease20Regular />}
+                          onClick={() => resizeText(-1)}
+                        />
+                        <select
+                          className="case-select"
+                          aria-label="Change case"
+                          defaultValue=""
+                          onChange={(event) => {
+                            changeCase(event.target.value);
+                            event.target.value = "";
+                          }}
+                        >
+                          <option value="">Aa</option>
+                          <option value="title">Capitalize Each Word</option>
+                          <option value="upper">UPPERCASE</option>
+                          <option value="lower">lowercase</option>
+                        </select>
+                      </div>
+                      <div className="ribbon-row">
+                        <Tool
+                          label="Bold (Ctrl+B)"
+                          icon={<TextBold20Regular />}
+                          active={editor?.isActive("bold")}
+                          onClick={() =>
+                            editor?.chain().focus().toggleBold().run()
+                          }
+                        />
+                        <Tool
+                          label="Italic (Ctrl+I)"
+                          icon={<TextItalic20Regular />}
+                          active={editor?.isActive("italic")}
+                          onClick={() =>
+                            editor?.chain().focus().toggleItalic().run()
+                          }
+                        />
+                        <Tool
+                          label="Underline (Ctrl+U)"
+                          icon={<TextUnderline20Regular />}
+                          active={editor?.isActive("underline")}
+                          onClick={() =>
+                            editor?.chain().focus().toggleUnderline().run()
+                          }
+                        />
+                        <Tool
+                          label="Strikethrough"
+                          icon={<TextStrikethrough20Regular />}
+                          active={editor?.isActive("strike")}
+                          onClick={() =>
+                            editor?.chain().focus().toggleStrike().run()
+                          }
+                        />
+                        <Tool
+                          label="Subscript"
+                          icon={<TextSubscript20Regular />}
+                          active={editor?.isActive("subscript")}
+                          onClick={() =>
+                            editor?.chain().focus().toggleSubscript().run()
+                          }
+                        />
+                        <Tool
+                          label="Superscript"
+                          icon={<TextSuperscript20Regular />}
+                          active={editor?.isActive("superscript")}
+                          onClick={() =>
+                            editor?.chain().focus().toggleSuperscript().run()
+                          }
+                        />
+                        <label
+                          className="color-tool"
+                          title="Text color"
+                          aria-label="Text color"
+                        >
+                          <TextColor20Regular />
+                          <input
+                            type="color"
+                            defaultValue="#111111"
+                            onChange={(event) =>
+                              editor
+                                ?.chain()
+                                .focus()
+                                .setColor(event.target.value)
+                                .run()
+                            }
+                          />
+                        </label>
+                        <label
+                          className="color-tool"
+                          title="Text highlight"
+                          aria-label="Text highlight"
+                        >
+                          <Highlight20Regular />
+                          <input
+                            type="color"
+                            defaultValue="#fff2a8"
+                            onChange={(event) =>
+                              editor
+                                ?.chain()
+                                .focus()
+                                .setHighlight({ color: event.target.value })
+                                .run()
+                            }
+                          />
+                        </label>
+                        <Tool
+                          label="Clear formatting"
+                          icon={<Dismiss20Regular />}
+                          onClick={() =>
+                            editor?.chain().focus().unsetAllMarks().run()
+                          }
+                        />
+                      </div>
+                    </div>
+                    <span>Font</span>
+                  </div>
+                  <div className="toolbar-group paragraph-group">
+                    <div className="ribbon-control-stack">
+                      <div className="ribbon-row">
+                        <Tool
+                          label="Bulleted list"
+                          icon={<TextBulletListLtr20Regular />}
+                          active={editor?.isActive("bulletList")}
+                          onClick={() =>
+                            editor?.chain().focus().toggleBulletList().run()
+                          }
+                        />
+                        <Tool
+                          label="Numbered list"
+                          icon={<TextNumberListLtr20Regular />}
+                          active={editor?.isActive("orderedList")}
+                          onClick={() =>
+                            editor?.chain().focus().toggleOrderedList().run()
+                          }
+                        />
+                        <Tool
+                          label="Checklist"
+                          icon={<TextBulletListSquare20Regular />}
+                          active={editor?.isActive("taskList")}
+                          onClick={() =>
+                            editor?.chain().focus().toggleTaskList().run()
+                          }
+                        />
+                        <Tool
+                          label="Decrease indent"
+                          icon={<TextIndentDecrease20Regular />}
+                          onClick={() => indentList(-1)}
+                          disabled={
+                            !editor?.isActive("listItem") &&
+                            !editor?.isActive("taskItem")
+                          }
+                        />
+                        <Tool
+                          label="Increase indent"
+                          icon={<TextIndentIncrease20Regular />}
+                          onClick={() => indentList(1)}
+                          disabled={
+                            !editor?.isActive("listItem") &&
+                            !editor?.isActive("taskItem")
+                          }
+                        />
+                        <select
+                          aria-label="Paragraph style"
+                          defaultValue="p"
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            value === "p"
+                              ? editor?.chain().focus().setParagraph().run()
+                              : editor
+                                  ?.chain()
+                                  .focus()
+                                  .setHeading({ level: +value as 1 | 2 | 3 })
+                                  .run();
+                          }}
+                        >
+                          <option value="p">Paragraph</option>
+                          <option value="1">Heading 1</option>
+                          <option value="2">Heading 2</option>
+                          <option value="3">Heading 3</option>
+                        </select>
+                      </div>
+                      <div className="ribbon-row">
+                        <Tool
+                          label="Align left"
+                          icon={<TextAlignLeft20Regular />}
+                          active={editor?.isActive({ textAlign: "left" })}
+                          onClick={() =>
+                            editor?.chain().focus().setTextAlign("left").run()
+                          }
+                        />
+                        <Tool
+                          label="Align center"
+                          icon={<TextAlignCenter20Regular />}
+                          active={editor?.isActive({ textAlign: "center" })}
+                          onClick={() =>
+                            editor?.chain().focus().setTextAlign("center").run()
+                          }
+                        />
+                        <Tool
+                          label="Align right"
+                          icon={<TextAlignRight20Regular />}
+                          active={editor?.isActive({ textAlign: "right" })}
+                          onClick={() =>
+                            editor?.chain().focus().setTextAlign("right").run()
+                          }
+                        />
+                        <Tool
+                          label="Justify"
+                          icon={<TextAlignJustify20Regular />}
+                          active={editor?.isActive({ textAlign: "justify" })}
+                          onClick={() =>
+                            editor
+                              ?.chain()
+                              .focus()
+                              .setTextAlign("justify")
+                              .run()
+                          }
+                        />
+                        <Tool
+                          label="Block quote"
+                          icon={<TextQuote20Regular />}
+                          active={editor?.isActive("blockquote")}
+                          onClick={() =>
+                            editor?.chain().focus().toggleBlockquote().run()
+                          }
+                        />
+                        <Tool
+                          label="Code block"
+                          icon={<Code20Regular />}
+                          active={editor?.isActive("codeBlock")}
+                          onClick={() =>
+                            editor?.chain().focus().toggleCodeBlock().run()
+                          }
+                        />
+                        <select
+                          aria-label="Line spacing"
+                          defaultValue=""
+                          onChange={(event) =>
+                            event.target.value
+                              ? editor
+                                  ?.chain()
+                                  .focus()
+                                  .setLineHeight(event.target.value)
+                                  .run()
+                              : editor?.chain().focus().unsetLineHeight().run()
+                          }
+                        >
+                          <option value="">Line spacing</option>
+                          <option value="1">1.0</option>
+                          <option value="1.15">1.15</option>
+                          <option value="1.5">1.5</option>
+                          <option value="2">2.0</option>
+                        </select>
+                      </div>
+                    </div>
+                    <span>Paragraph</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="toolbar-group toolbar-group-wide">
+                    <Tool
+                      label="Link"
+                      icon={<Link20Regular />}
+                      onClick={askLink}
+                    />
+                    <Tool
+                      label="Image"
+                      icon={<Image20Regular />}
+                      onClick={() => imageRef.current?.click()}
+                    />
+                    <Tool
+                      label="Table"
+                      icon={<Table20Regular />}
+                      onClick={() =>
+                        editor
                           ?.chain()
                           .focus()
-                          .toggleHeading({ level: +v as 1 | 2 | 3 })
-                          .run();
-                  }}
-                >
-                  <option value="p">Paragraph</option>
-                  <option value="1">Heading 1</option>
-                  <option value="2">Heading 2</option>
-                  <option value="3">Heading 3</option>
-                </select>
-                <span>Styles</span>
-              </div>
-              <div className="toolbar-group">
-                <Tool
-                  label="Bold (Ctrl+B)"
-                  icon={<TextBold20Regular />}
-                  active={editor?.isActive("bold")}
-                  onClick={() => editor?.chain().focus().toggleBold().run()}
-                />
-                <Tool
-                  label="Italic (Ctrl+I)"
-                  icon={<TextItalic20Regular />}
-                  active={editor?.isActive("italic")}
-                  onClick={() => editor?.chain().focus().toggleItalic().run()}
-                />
-                <Tool
-                  label="Underline"
-                  icon={<TextUnderline20Regular />}
-                  active={editor?.isActive("underline")}
-                  onClick={() =>
-                    editor?.chain().focus().toggleUnderline().run()
-                  }
-                />
-                <Tool
-                  label="Strikethrough"
-                  icon={<TextStrikethrough20Regular />}
-                  active={editor?.isActive("strike")}
-                  onClick={() => editor?.chain().focus().toggleStrike().run()}
-                />
-                <span>Text</span>
-              </div>
-              <div className="toolbar-group">
-                <Tool
-                  label="Bulleted list"
-                  icon={<TextBulletListLtr20Regular />}
-                  onClick={() =>
-                    editor?.chain().focus().toggleBulletList().run()
-                  }
-                />
-                <Tool
-                  label="Numbered list"
-                  icon={<TextNumberListLtr20Regular />}
-                  onClick={() =>
-                    editor?.chain().focus().toggleOrderedList().run()
-                  }
-                />
-                <Tool
-                  label="Checklist"
-                  icon={<TextBulletListSquare20Regular />}
-                  onClick={() => editor?.chain().focus().toggleTaskList().run()}
-                />
-                <Tool
-                  label="Code block"
-                  icon={<Code20Regular />}
-                  onClick={() =>
-                    editor?.chain().focus().toggleCodeBlock().run()
-                  }
-                />
-                <Tool
-                  label="Align left"
-                  icon={<TextAlignLeft20Regular />}
-                  onClick={() =>
-                    editor?.chain().focus().setTextAlign("left").run()
-                  }
-                />
-                <Tool
-                  label="Align center"
-                  icon={<TextAlignCenter20Regular />}
-                  onClick={() =>
-                    editor?.chain().focus().setTextAlign("center").run()
-                  }
-                />
-                <Tool
-                  label="Align right"
-                  icon={<TextAlignRight20Regular />}
-                  onClick={() =>
-                    editor?.chain().focus().setTextAlign("right").run()
-                  }
-                />
-                <span>Paragraph</span>
-              </div>
-              <div className="toolbar-group">
-                <Tool label="Link" icon={<Link20Regular />} onClick={askLink} />
-                <Tool
-                  label="Image"
-                  icon={<Image20Regular />}
-                  onClick={() => imageRef.current?.click()}
-                />
-                <Tool
-                  label="Table"
-                  icon={<Table20Regular />}
-                  onClick={() =>
-                    editor
-                      ?.chain()
-                      .focus()
-                      .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-                      .run()
-                  }
-                />
-                <span>Insert</span>
-              </div>
-              <div className="toolbar-group">
-                <Tool
-                  label="Save draft (Ctrl+S)"
-                  icon={<Save20Regular />}
-                  onClick={() => void save()}
-                />
-                <Tool
-                  label="Clear formatting"
-                  icon={<Dismiss20Regular />}
-                  onClick={() =>
-                    editor?.chain().focus().unsetAllMarks().clearNodes().run()
-                  }
-                />
-                <span>Document</span>
-              </div>
+                          .insertTable({
+                            rows: 3,
+                            cols: 3,
+                            withHeaderRow: true,
+                          })
+                          .run()
+                      }
+                    />
+                    <Tool
+                      label="Horizontal line"
+                      icon={<LineHorizontal120Regular />}
+                      onClick={() =>
+                        editor?.chain().focus().setHorizontalRule().run()
+                      }
+                    />
+                    <span>Insert</span>
+                  </div>
+                  <div className="toolbar-group">
+                    <Tool
+                      label="Save draft (Ctrl+S)"
+                      icon={<Save20Regular />}
+                      onClick={() => void save()}
+                    />
+                    <Tool
+                      label="Clear document formatting"
+                      icon={<Dismiss20Regular />}
+                      onClick={() =>
+                        editor
+                          ?.chain()
+                          .focus()
+                          .unsetAllMarks()
+                          .clearNodes()
+                          .run()
+                      }
+                    />
+                    <span>Document</span>
+                  </div>
+                </>
+              )}
             </Toolbar>
             <div className="document-canvas">
               <EditorContent editor={editor} />
@@ -668,9 +1119,11 @@ export function PostEditor() {
         {message && (
           <div
             className={
-              message.startsWith("Published")
-                ? "publish-message"
-                : "publish-message error"
+              /failed|could not|unavailable|required|add a post title/i.test(
+                message,
+              )
+                ? "publish-message error"
+                : "publish-message"
             }
             role="status"
           >

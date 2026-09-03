@@ -360,7 +360,7 @@ select {
   align-items: stretch;
   gap: 0;
   width: 100%;
-  min-height: 82px;
+  min-height: 96px;
   padding: 5px 14px;
   background: #fff;
   border-bottom: 1px solid #d1d1d1;
@@ -371,7 +371,7 @@ select {
   display: flex;
   align-items: flex-start;
   gap: 2px;
-  padding: 3px 10px 18px;
+  padding: 3px 10px 20px;
   border-right: 1px solid #e0e0e0;
 }
 .toolbar-group > span:last-child {
@@ -388,6 +388,58 @@ select {
   border: 1px solid #d1d1d1;
   background: white;
   border-radius: 2px;
+  padding: 0 6px;
+  font:
+    12px "Segoe UI",
+    sans-serif;
+}
+.toolbar-group-wide {
+  min-width: max-content;
+}
+.font-group {
+  min-width: 430px;
+}
+.paragraph-group {
+  min-width: 390px;
+}
+.ribbon-control-stack {
+  display: grid;
+  gap: 2px;
+}
+.ribbon-row,
+.clipboard-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.font-size-select {
+  width: 58px;
+}
+.case-select {
+  width: 52px;
+}
+.color-tool {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.color-tool:hover {
+  background: #f0f0f0;
+}
+.color-tool input {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: 2px;
+  width: 22px;
+  height: 4px;
+  padding: 0;
+  border: 0;
+  opacity: 0.85;
 }
 .document-canvas,
 .preview-canvas {
@@ -415,6 +467,69 @@ select {
 }
 .document-surface table {
   border-collapse: collapse;
+}
+.document-surface img,
+.preview-prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.5rem auto;
+  border-radius: 3px;
+}
+.document-surface img {
+  cursor: grab;
+}
+.document-surface img.ProseMirror-selectednode,
+.document-surface [data-resize-container].ProseMirror-selectednode img {
+  outline: 3px solid #0f6cbd;
+  outline-offset: 3px;
+}
+.document-surface [data-resize-container] {
+  display: table;
+  max-width: 100%;
+  margin: 1.5rem auto;
+}
+.document-surface [data-resize-wrapper] {
+  position: relative;
+}
+.document-surface [data-resize-handle] {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1px solid white;
+  border-radius: 2px;
+  background: #0f6cbd;
+}
+.document-surface [data-resize-handle="left"] {
+  left: -5px;
+  top: 50%;
+}
+.document-surface [data-resize-handle="right"] {
+  right: -5px;
+  top: 50%;
+}
+.document-surface [data-resize-handle="top-left"] {
+  left: -5px;
+  top: -5px;
+}
+.document-surface [data-resize-handle="top-right"] {
+  right: -5px;
+  top: -5px;
+}
+.document-surface [data-resize-handle="bottom-left"] {
+  left: -5px;
+  bottom: -5px;
+}
+.document-surface [data-resize-handle="bottom-right"] {
+  right: -5px;
+  bottom: -5px;
+}
+.document-surface blockquote,
+.preview-prose blockquote {
+  margin: 1.5rem 0;
+  padding-left: 1rem;
+  border-left: 3px solid #0f6cbd;
+  color: #525252;
 }
 .document-surface td,
 .document-surface th {

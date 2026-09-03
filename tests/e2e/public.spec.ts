@@ -6,7 +6,7 @@ test("homepage, archive, post, projects, resume, and 404 render", async ({
   await expect(
     page.getByRole("heading", { name: "Brendon Busker" }),
   ).toBeVisible();
-  await page.goto("http://127.0.0.1:4321/notes/");
+  await page.goto("http://127.0.0.1:4321/blog/");
   await expect(page.getByRole("heading", { name: "2026" })).toBeVisible();
   await page
     .getByRole("link", {
@@ -54,7 +54,7 @@ test("project modal supports keyboard, deep links, escape, and history", async (
   await page.goto("http://127.0.0.1:4321/projects/?project=shiny-hunt-tracker");
   const shinyDialog = page.getByRole("dialog", { name: "Shiny Hunt Tracker" });
   await expect(shinyDialog).toBeVisible();
-  await expect(shinyDialog.locator(".project-hero-image")).toHaveCount(0);
+  await expect(shinyDialog.locator(".project-hero-image")).toHaveCount(1);
   await expect(
     shinyDialog.getByRole("link", { name: /Open live project/ }),
   ).toHaveAttribute(

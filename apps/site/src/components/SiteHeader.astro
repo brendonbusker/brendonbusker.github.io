@@ -5,6 +5,7 @@ const { current = '' } = Astro.props;
   <a class="wordmark" href="/">Brendon Busker</a>
   <nav aria-label="Primary navigation">
     <a href="/" aria-current={current === 'home' ? 'page' : undefined}>Home</a>
+    <a href="/blog/" aria-current={current === 'blog' ? 'page' : undefined}>Blog</a>
     <a href="/projects/" aria-current={current === 'projects' ? 'page' : undefined}>Projects</a>
     <a href="/resume/" aria-current={current === 'resume' ? 'page' : undefined}>Résumé</a>
   </nav>

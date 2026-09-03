@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import worker, { parseManagedMarkdown } from "./index";
+import worker, { parseManagedMarkdown, sanitizePostBody } from "./index";
 
 const db = {
   prepare: () => ({
@@ -110,5 +110,22 @@ describe("published content parsing", () => {
       '---\nfeatures:\n  - "First"\n  - "Second"\n---\n\nOverview',
     );
     expect(parsed.data.features).toEqual(["First", "Second"]);
+  });
+});
+
+describe("rich blog body sanitizing", () => {
+  it("keeps editor formatting and strips executable content", () => {
+    const clean = sanitizePostBody(
+      '<p style="text-align: center"><span style="font-family: Georgia; font-size: 24px; color: #315b71">Hello</span><script>alert(1)</script><img src="/uploads/posts/test/image.webp" alt="Example" onerror="alert(2)"></p>',
+    );
+    expect(clean).toContain('style="text-align:center"');
+    expect(clean).toContain("font-family:Georgia");
+    expect(clean).toContain('src="/uploads/posts/test/image.webp"');
+    expect(clean).not.toMatch(/script|onerror|alert/i);
+  });
+  it("continues sanitizing existing Markdown posts", () => {
+    expect(
+      sanitizePostBody("# Hello\n\n[x](javascript:alert(1))"),
+    ).not.toContain("javascript:");
   });
 });

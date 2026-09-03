@@ -3,7 +3,7 @@ import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../../../../layouts/BaseLayout.astro';
 export async function getStaticPaths() {
   const posts = (await getCollection('posts', ({data}) => data.status === 'published')).sort((a,b)=>+a.data.publishedAt-+b.data.publishedAt);
-  return posts.map((post,index) => { const d=post.data.publishedAt; const p=(e:typeof post|undefined)=>e?`/blog/${e.data.publishedAt.getUTCFullYear()}/${String(e.data.publishedAt.getUTCMonth()+1).padStart(2,'0')}/${String(e.data.publishedAt.getUTCDate()).padStart(2,'0')}/${e.data.slug}/`:undefined; return { params:{year:String(d.getUTCFullYear()),month:String(d.getUTCMonth()+1).padStart(2,'0'),day:String(d.getUTCDate()).padStart(2,'0'),slug:post.data.slug}, props:{post,previous:posts[index-1],next:posts[index+1],previousUrl:p(posts[index-1]),nextUrl:p(posts[index+1])} }; });
+  return posts.map((post,index) => { const d=post.data.publishedAt; const p=(entry:typeof post|undefined)=>entry?`/blog/${entry.data.publishedAt.getUTCFullYear()}/${String(entry.data.publishedAt.getUTCMonth()+1).padStart(2,'0')}/${String(entry.data.publishedAt.getUTCDate()).padStart(2,'0')}/${entry.data.slug}/`:undefined; return { params:{year:String(d.getUTCFullYear()),month:String(d.getUTCMonth()+1).padStart(2,'0'),day:String(d.getUTCDate()).padStart(2,'0'),slug:post.data.slug}, props:{post,previous:posts[index-1],next:posts[index+1],previousUrl:p(posts[index-1]),nextUrl:p(posts[index+1])} }; });
 }
 const { post, previous, next, previousUrl, nextUrl } = Astro.props;
 const { Content } = await render(post);

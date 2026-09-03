@@ -25,6 +25,7 @@ export function ResumeEditor() {
     "resume",
     "main",
     published.content,
+    published.sha,
   );
   const [preview, setPreview] = useState(false);
   const [message, setMessage] = useState("");

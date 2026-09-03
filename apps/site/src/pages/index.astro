@@ -5,7 +5,7 @@ import { getCollection } from 'astro:content';
 const posts = (await getCollection('posts', ({ data }) => data.status === 'published')).sort((a,b)=>+b.data.publishedAt-+a.data.publishedAt);
 const latest = posts[0];
 const recent = posts.slice(1,5);
-const postUrl = (post: typeof posts[number]) => { const d=post.data.publishedAt; return `/notes/${d.getUTCFullYear()}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${String(d.getUTCDate()).padStart(2,'0')}/${post.data.slug}/`; };
+const postUrl = (post: typeof posts[number]) => { const d=post.data.publishedAt; return `/blog/${d.getUTCFullYear()}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${String(d.getUTCDate()).padStart(2,'0')}/${post.data.slug}/`; };
 const formatDate = (date:Date) => date.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric',timeZone:'UTC'});
 ---
 <BaseLayout current="home">
@@ -19,11 +19,11 @@ const formatDate = (date:Date) => date.toLocaleDateString('en-US',{month:'long',
       <a href="/projects/">Browse projects <span aria-hidden="true">→</span></a>
     </nav>
   </section>
-  <section class="notes-lead" aria-labelledby="notes-title">
-    <div class="section-kicker"><p>Notes</p><a href="/notes/">View all notes <span aria-hidden="true">→</span></a></div>
+  <section class="notes-lead" aria-labelledby="blog-title">
+    <div class="section-kicker"><p>Blog</p><a href="/blog/">View all posts <span aria-hidden="true">→</span></a></div>
     {latest && <div class="latest-note">
       <time datetime={latest.data.publishedAt.toISOString()}><a href={postUrl(latest)}>{formatDate(latest.data.publishedAt)}</a></time>
-      <h2 id="notes-title"><a href={postUrl(latest)}>{latest.data.title}</a></h2>
+      <h2 id="blog-title"><a href={postUrl(latest)}>{latest.data.title}</a></h2>
       <p>{latest.data.excerpt}</p>
     </div>}
     {recent.length > 0 && <div class="recent-notes">{recent.map(post=><article><time datetime={post.data.publishedAt.toISOString()}><a href={postUrl(post)}>{formatDate(post.data.publishedAt)}</a></time><h3><a href={postUrl(post)}>{post.data.title}</a></h3><p>{post.data.excerpt}</p></article>)}</div>}
