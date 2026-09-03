@@ -131,7 +131,7 @@ All commands below run from `apps/admin` unless shown otherwise.
 8. Deploy:
 
    ```bash
-   pnpm --filter @brendon/admin deploy
+   pnpm --filter @brendon/admin run deploy
    ```
 
 9. Update `adminUrl` in `apps/site/src/data/site.json` and `ADMIN_ORIGIN` in `apps/admin/wrangler.jsonc` to the exact deployed HTTPS origin. Redeploy both applications.
