@@ -1,13 +1,15 @@
 ---
 id: "3b1f7d4b-d695-4b02-9f8f-977c06e84b1e"
-title: "The first useful version"
-slug: "the-first-useful-version"
-publishedAt: 2026-08-24
-updatedAt: 2026-08-24
-excerpt: "A small note about shipping the version that teaches you what the next one should be."
+title: "my very first post"
+slug: "first-post"
+publishedAt: 2026-09-03
+updatedAt: 2026-09-03
+excerpt: "What's he building in there............"
 status: published
 ---
 
-There is a difference between a first version and a first *useful* version. The useful one is complete enough to meet reality: somebody can try it, misunderstand it, and show you where your assumptions were wrong.
+I built this website to act as a space for me to post my projects and document it for the world to see.
 
-That is a much better milestone than “finished.”
+I'm particularly interested in building things useful for me, I play a lot of pokemon in my free time and thought that the available tools for shiny hunting and calculating IVs were not that good so I built my own.
+
+Not entirely sure what the future holds for projects but when they happen they'll be posted here for people to use.
