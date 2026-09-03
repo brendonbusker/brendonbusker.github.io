@@ -14,7 +14,7 @@ icon: "sparkles"
 accent: "#9a6a22"
 techStack: ["React","TypeScript","Vite","Dexie","IndexedDB"]
 screenshots: [{"src":"/uploads/projects/shiny-hunt-tracker/1788451980242-5500c18f-b513-48c5-b91c-8635a864c32d.webp","alt":"cover"}]
-why: "Long hunts can span many sessions, and a simple click counter loses the timing, pace, history, and setup around the hunt. This tracker keeps that context together without requiring an account or sending hunt data to a server."
+why: "I built this because I wanted a spot where I could keep all of my hunts logged in the same spot where I could track encounters and keep stats as well. Found a shiny shadow suicune in Colosseum while I tested it which was pretty sick. If you want stats on all your hunts that are very accurate then this will be your best friend."
 features: ["Multiple simultaneous hunts with independent increments, shortcuts, timers, and encounter histories","Transactional counters with auditable events, undo, pause and resume controls, and crash recovery","Generation-aware shiny sprites through PokéAPI, including explicit Colosseum and XD fallbacks","Per-hunt statistics, configurable stream layouts, and validated JSON backup and restore"]
 implementation: "The app uses React and TypeScript with Dexie over IndexedDB for durable local storage. Its repository layer isolates persistence from the interface, while React Router supports the dashboard and capture-friendly Stream Mode. The entire app deploys statically to GitHub Pages with no backend or user account."
 createdAt: 2026-08-31
