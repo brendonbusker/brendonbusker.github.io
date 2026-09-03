@@ -10,7 +10,7 @@ const formatDate = (date:Date) => date.toLocaleDateString('en-US',{month:'long',
 ---
 <BaseLayout current="home">
   <section class="hero" aria-labelledby="intro-title">
-    <p class="eyebrow">Austin, Texas · America/Chicago</p>
+    <p class="eyebrow">{site.location} · {site.timezone}</p>
     <h1 id="intro-title">{site.fullName}</h1>
     <p class="hero-headline">{site.professionalHeadline}</p>
     <div class="hero-copy"><p>{site.intro}</p><p>{site.secondaryIntro}</p></div>

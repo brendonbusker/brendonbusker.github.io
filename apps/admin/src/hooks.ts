@@ -8,48 +8,63 @@ export function useDraft<T>(
 ) {
   const [value, setValueState] = useState(initial);
   const [state, setState] = useState<SaveState>("idle");
+  const [loading, setLoading] = useState(true);
+  const [revision, setRevision] = useState(0);
   const timer = useRef<number | undefined>(undefined);
   const hydrated = useRef(false);
+  const valueRef = useRef(initial);
   useEffect(() => {
     let alive = true;
+    window.clearTimeout(timer.current);
     hydrated.current = false;
+    valueRef.current = initial;
     setValueState(initial);
     setState("idle");
+    setLoading(true);
     draftsApi
       .get<T>(contentType, contentKey)
       .then(({ draft }) => {
-        if (alive && draft) setValueState(draft);
+        if (alive && draft) {
+          valueRef.current = draft;
+          setValueState(draft);
+        }
       })
       .catch(() => {})
       .finally(() => {
-        hydrated.current = true;
+        if (alive) {
+          hydrated.current = true;
+          setLoading(false);
+          setRevision((current) => current + 1);
+        }
       });
     return () => {
       alive = false;
     };
   }, [contentType, contentKey, initial]);
   const save = useCallback(
-    async (next = value) => {
+    async (next?: T) => {
+      const payload = next ?? valueRef.current;
       setState("saving");
       try {
         await draftsApi.save({
           id: crypto.randomUUID(),
           contentType,
           contentKey,
-          payload: next,
+          payload,
         });
         setState("saved");
       } catch {
         setState("error");
       }
     },
-    [contentType, contentKey, value],
+    [contentType, contentKey],
   );
   const setValue = useCallback(
     (next: T | ((current: T) => T)) => {
       setValueState((current) => {
         const resolved =
           typeof next === "function" ? (next as (v: T) => T)(current) : next;
+        valueRef.current = resolved;
         if (hydrated.current) {
           setState("unsaved");
           window.clearTimeout(timer.current);
@@ -60,6 +75,15 @@ export function useDraft<T>(
     },
     [save],
   );
+  const reset = useCallback((next: T) => {
+    window.clearTimeout(timer.current);
+    valueRef.current = next;
+    hydrated.current = true;
+    setValueState(next);
+    setState("idle");
+    setLoading(false);
+    setRevision((current) => current + 1);
+  }, []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
@@ -75,8 +99,8 @@ export function useDraft<T>(
     return () => {
       removeEventListener("keydown", onKey);
       removeEventListener("beforeunload", before);
-      window.clearTimeout(timer.current);
     };
   }, [save, state]);
-  return { value, setValue, state, save };
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  return { value, setValue, state, save, reset, loading, revision };
 }

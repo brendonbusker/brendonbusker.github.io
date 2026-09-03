@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Field,
@@ -56,7 +56,7 @@ import {
 } from "@brendon/shared";
 import { newPost } from "../seed";
 import { useDraft } from "../hooks";
-import { api, draftsApi } from "../api";
+import { api, draftsApi, publishedApi, type PublishedItem } from "../api";
 import { optimizeImage } from "../media";
 import { SaveStatus } from "./SaveStatus";
 
@@ -96,19 +96,95 @@ function Tool({
   );
 }
 export function PostEditor() {
-  const [selected, setSelected] = useState("new-post");
+  const firstPost = useMemo(newPost, []);
+  const [selected, setSelected] = useState(firstPost.id);
+  const [scratchPosts, setScratchPosts] = useState<Record<string, Post>>({
+    [firstPost.id]: firstPost,
+  });
+  const [publishedPosts, setPublishedPosts] = useState<
+    Array<PublishedItem<Post>>
+  >([]);
+  const [draftPosts, setDraftPosts] = useState<
+    Array<{ key: string; post: Post; updatedAt: string }>
+  >([]);
+  const [syncing, setSyncing] = useState(true);
+  const [search, setSearch] = useState("");
   const [preview, setPreview] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [message, setMessage] = useState("");
   const imageRef = useRef<HTMLInputElement>(null);
-  const loadedPostId = useRef("");
-  const initial = useMemo(newPost, [selected]);
+  const loadedRevision = useRef(-1);
+  const initial = useMemo(
+    () =>
+      draftPosts.find(({ key }) => key === selected)?.post ??
+      publishedPosts.find(({ content }) => content.id === selected)?.content ??
+      scratchPosts[selected] ??
+      newPost(),
+    [draftPosts, publishedPosts, scratchPosts, selected],
+  );
   const {
     value: post,
     setValue,
     state,
     save,
+    reset,
+    loading,
+    revision,
   } = useDraft<Post>("post", selected, initial);
+  const refreshDrafts = useCallback(async () => {
+    const { drafts } = await draftsApi.list();
+    const parsed = drafts
+      .filter(({ content_type }) => content_type === "post")
+      .flatMap(({ content_key, payload_json, updated_at }) => {
+        try {
+          const value = JSON.parse(payload_json) as Post;
+          return value && typeof value.id === "string"
+            ? [{ key: content_key, post: value, updatedAt: updated_at }]
+            : [];
+        } catch {
+          return [];
+        }
+      });
+    setDraftPosts(parsed);
+  }, []);
+  useEffect(() => {
+    let alive = true;
+    Promise.all([publishedApi.collection<Post>("posts"), draftsApi.list()])
+      .then(([{ items }, { drafts }]) => {
+        if (!alive) return;
+        setPublishedPosts(items);
+        setDraftPosts(
+          drafts
+            .filter(({ content_type }) => content_type === "post")
+            .flatMap(({ content_key, payload_json, updated_at }) => {
+              try {
+                const value = JSON.parse(payload_json) as Post;
+                return value && typeof value.id === "string"
+                  ? [{ key: content_key, post: value, updatedAt: updated_at }]
+                  : [];
+              } catch {
+                return [];
+              }
+            }),
+        );
+      })
+      .catch((error) =>
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Could not load posts from GitHub.",
+        ),
+      )
+      .finally(() => {
+        if (alive) setSyncing(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (state === "saved") void refreshDrafts();
+  }, [refreshDrafts, state]);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -141,15 +217,16 @@ export function PostEditor() {
       })),
   });
   useEffect(() => {
-    if (!editor || editor.isDestroyed || loadedPostId.current === post.id) return;
-    loadedPostId.current = post.id;
+    if (!editor || editor.isDestroyed || loadedRevision.current === revision)
+      return;
+    loadedRevision.current = revision;
     editor.commands.setContent(
       post.body
         ? DOMPurify.sanitize(marked.parse(post.body) as string)
         : "<p>Start writing…</p>",
       { emitUpdate: false },
     );
-  }, [editor, post.id, post.body]);
+  }, [editor, post.body, revision]);
   const setField = <K extends keyof Post>(key: K, value: Post[K]) =>
     setValue((current) => ({
       ...current,
@@ -166,8 +243,26 @@ export function PostEditor() {
         slug: post.slug || slugify(post.title),
         excerpt: post.excerpt || excerptFromMarkdown(post.body),
       });
-      const result = await draftsApi.publish("post", valid);
-      setValue(valid);
+      const source = publishedPosts.find(
+        ({ content }) => content.id === valid.id,
+      );
+      const result = await draftsApi.publish("post", valid, {
+        expectedSha: source?.sha || undefined,
+        targetPath: source?.path || undefined,
+      });
+      await draftsApi.remove("post", selected);
+      const nextItem = {
+        content: valid,
+        path: result.path,
+        sha: result.contentSha,
+      };
+      setPublishedPosts((items) =>
+        source
+          ? items.map((item) => (item === source ? nextItem : item))
+          : [nextItem, ...items],
+      );
+      setDraftPosts((items) => items.filter(({ key }) => key !== selected));
+      reset(valid);
       setMessage(
         `Published to GitHub. Site deployment is in progress. Version ${result.version.slice(0, 8)}.`,
       );
@@ -178,11 +273,58 @@ export function PostEditor() {
     }
   };
   const deleteDraft = async () => {
-    if (!confirm(`Delete "${post.title || "this draft"}"?`)) return;
+    const source = publishedPosts.find(({ content }) => content.id === post.id);
+    const promptText = source
+      ? `Discard unpublished changes to "${post.title}" and reload the published version?`
+      : `Delete "${post.title || "this draft"}"?`;
+    if (!confirm(promptText)) return;
     await draftsApi.remove("post", selected);
-    setSelected(crypto.randomUUID());
-    setMessage("Draft deleted.");
+    setDraftPosts((items) => items.filter(({ key }) => key !== selected));
+    if (source) {
+      reset(source.content);
+      setMessage("Unpublished changes discarded. Published post reloaded.");
+    } else {
+      const next = newPost();
+      setScratchPosts((items) => ({ ...items, [next.id]: next }));
+      setSelected(next.id);
+      setMessage("Draft deleted. A new blank post is ready.");
+    }
   };
+  const listEntries = useMemo(() => {
+    const entries: Array<{
+      key: string;
+      content: Post;
+      status: "Draft" | "Published";
+      date: string;
+    }> = draftPosts.map(({ key, post: content, updatedAt }) => ({
+      key,
+      content,
+      status: "Draft",
+      date: updatedAt.slice(0, 10),
+    }));
+    for (const item of publishedPosts) {
+      if (!draftPosts.some(({ post: draft }) => draft.id === item.content.id))
+        entries.push({
+          key: item.content.id,
+          content: item.content,
+          status: "Published" as const,
+          date: item.content.publishedAt.slice(0, 10),
+        });
+    }
+    if (!entries.some(({ key }) => key === selected))
+      entries.unshift({
+        key: selected,
+        content: post,
+        status: "Draft" as const,
+        date: post.publishedAt.slice(0, 10),
+      });
+    const query = search.trim().toLowerCase();
+    return query
+      ? entries.filter(({ content }) =>
+          `${content.title} ${content.excerpt}`.toLowerCase().includes(query),
+        )
+      : entries;
+  }, [draftPosts, post, publishedPosts, search, selected]);
   const askLink = () => {
     const href = prompt("Link URL (https:// or mailto:)");
     if (href)
@@ -236,7 +378,9 @@ export function PostEditor() {
             appearance="primary"
             icon={<Add20Regular />}
             onClick={() => {
-              setSelected(crypto.randomUUID());
+              const next = newPost();
+              setScratchPosts((items) => ({ ...items, [next.id]: next }));
+              setSelected(next.id);
               setPreview(false);
             }}
           >
@@ -244,22 +388,39 @@ export function PostEditor() {
           </Button>
         </header>
         <div className="list-search">
-          <Input placeholder="Search posts" aria-label="Search posts" />
+          <Input
+            placeholder="Search posts"
+            aria-label="Search posts"
+            value={search}
+            onChange={(_, data) => setSearch(data.value)}
+          />
         </div>
-        <button className="document-row active">
-          <span className="document-icon">W</span>
-          <span>
-            <strong>{post.title || "Untitled post"}</strong>
-            <small>Draft · {post.publishedAt}</small>
-          </span>
-        </button>
-        <button className="document-row">
-          <span className="document-icon published">W</span>
-          <span>
-            <strong>Building a place for the work between projects</strong>
-            <small>Published · Aug 31, 2026</small>
-          </span>
-        </button>
+        {syncing && <p className="list-status">Loading GitHub posts…</p>}
+        {!syncing && listEntries.length === 0 && (
+          <p className="list-status">No posts match this search.</p>
+        )}
+        {listEntries.map((entry) => (
+          <button
+            key={entry.key}
+            className={`document-row ${entry.key === selected ? "active" : ""}`}
+            onClick={() => {
+              setSelected(entry.key);
+              setPreview(false);
+            }}
+          >
+            <span
+              className={`document-icon ${entry.status === "Published" ? "published" : ""}`}
+            >
+              W
+            </span>
+            <span>
+              <strong>{entry.content.title || "Untitled post"}</strong>
+              <small>
+                {entry.status} · {entry.date}
+              </small>
+            </span>
+          </button>
+        ))}
       </aside>
       <main className="post-editor">
         <header className="editor-titlebar">
@@ -280,7 +441,7 @@ export function PostEditor() {
               appearance="primary"
               icon={<Send20Regular />}
               onClick={publish}
-              disabled={publishing || !post.title}
+              disabled={publishing || syncing || loading || !post.title}
             >
               {publishing ? "Publishing…" : "Publish"}
             </Button>
@@ -428,17 +589,23 @@ export function PostEditor() {
                 <Tool
                   label="Align left"
                   icon={<TextAlignLeft20Regular />}
-                  onClick={() => editor?.chain().focus().setTextAlign("left").run()}
+                  onClick={() =>
+                    editor?.chain().focus().setTextAlign("left").run()
+                  }
                 />
                 <Tool
                   label="Align center"
                   icon={<TextAlignCenter20Regular />}
-                  onClick={() => editor?.chain().focus().setTextAlign("center").run()}
+                  onClick={() =>
+                    editor?.chain().focus().setTextAlign("center").run()
+                  }
                 />
                 <Tool
                   label="Align right"
                   icon={<TextAlignRight20Regular />}
-                  onClick={() => editor?.chain().focus().setTextAlign("right").run()}
+                  onClick={() =>
+                    editor?.chain().focus().setTextAlign("right").run()
+                  }
                 />
                 <span>Paragraph</span>
               </div>

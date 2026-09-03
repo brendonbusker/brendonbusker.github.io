@@ -118,6 +118,7 @@ export const seedSite: SiteProfile = {
   siteTitle: "Brendon Busker",
   siteDescription:
     "The personal website, writing archive, projects, and résumé of Brendon Busker.",
+  location: "Austin, Texas",
   timezone: "America/Chicago",
   adminUrl: "https://personal-site-admin.brendonbusker.workers.dev/",
 };

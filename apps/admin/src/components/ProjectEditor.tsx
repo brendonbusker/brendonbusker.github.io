@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Checkbox,
@@ -18,18 +18,24 @@ import {
 import { projectSchema, slugify, type Project } from "@brendon/shared";
 import { newProject, seedProject, seedProjects } from "../seed";
 import { useDraft } from "../hooks";
-import { api, draftsApi } from "../api";
+import { api, draftsApi, publishedApi, type PublishedItem } from "../api";
 import { SaveStatus } from "./SaveStatus";
 import { optimizeImage } from "../media";
 export function ProjectEditor() {
   const [contentKey, setContentKey] = useState(seedProject.slug);
+  const [published, setPublished] = useState<Array<PublishedItem<Project>>>(
+    () => seedProjects.map((content) => ({ content, path: "", sha: "" })),
+  );
+  const [syncing, setSyncing] = useState(true);
   const initial = useMemo(
     () =>
-      seedProjects.find((project) => project.slug === contentKey) ??
-      newProject(),
-    [contentKey],
+      published.find(
+        ({ content }) =>
+          content.slug === contentKey || content.id === contentKey,
+      )?.content ?? newProject(),
+    [contentKey, published],
   );
-  const { value, setValue, state } = useDraft<Project>(
+  const { value, setValue, state, reset, loading } = useDraft<Project>(
     "project",
     contentKey,
     initial,
@@ -37,12 +43,53 @@ export function ProjectEditor() {
   const [preview, setPreview] = useState(false);
   const [message, setMessage] = useState("");
   const imageRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    let alive = true;
+    publishedApi
+      .collection<Project>("projects")
+      .then(({ items }) => {
+        if (alive) setPublished(items);
+      })
+      .catch((error) => {
+        if (alive)
+          setMessage(
+            error instanceof Error
+              ? error.message
+              : "Could not load published projects.",
+          );
+      })
+      .finally(() => {
+        if (alive) setSyncing(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
   const set = (key: keyof Project, v: unknown) =>
     setValue((p) => ({ ...p, [key]: v, updatedAt: new Date().toISOString() }));
   const publish = async () => {
     try {
-      projectSchema.parse(value);
-      await draftsApi.publish("project", value);
+      const valid = projectSchema.parse(value);
+      const source = published.find(
+        ({ content }) => content.id === valid.id || content.slug === contentKey,
+      );
+      const result = await draftsApi.publish("project", valid, {
+        expectedSha: source?.sha || undefined,
+        targetPath: source?.path || undefined,
+      });
+      await draftsApi.remove("project", contentKey);
+      const nextItem = {
+        content: valid,
+        path: result.path,
+        sha: result.contentSha,
+      };
+      setPublished((items) =>
+        source
+          ? items.map((item) => (item === source ? nextItem : item))
+          : [...items, nextItem],
+      );
+      setContentKey(valid.slug);
+      reset(valid);
       setMessage("Published to GitHub. Site deployment is in progress.");
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Could not publish.");
@@ -97,13 +144,18 @@ export function ProjectEditor() {
           <p className="page-label">Projects</p>
           <h1>{value.title}</h1>
           <SaveStatus state={state} />
+          <p className="source-status">
+            {syncing || loading
+              ? "Loading current projects from GitHub…"
+              : "Published projects loaded from GitHub"}
+          </p>
         </div>
         <div>
           <select
             className="project-switcher"
             aria-label="Choose a project to edit"
             value={
-              seedProjects.some((project) => project.slug === contentKey)
+              published.some(({ content }) => content.slug === contentKey)
                 ? contentKey
                 : "new"
             }
@@ -112,12 +164,12 @@ export function ProjectEditor() {
                 setContentKey(event.target.value);
             }}
           >
-            {seedProjects.map((project) => (
-              <option key={project.slug} value={project.slug}>
-                {project.title}
+            {published.map(({ content }) => (
+              <option key={content.id} value={content.slug}>
+                {content.title}
               </option>
             ))}
-            {!seedProjects.some((project) => project.slug === contentKey) && (
+            {!published.some(({ content }) => content.slug === contentKey) && (
               <option value="new">New project draft</option>
             )}
           </select>
@@ -147,6 +199,7 @@ export function ProjectEditor() {
             appearance="primary"
             icon={<Send20Regular />}
             onClick={publish}
+            disabled={syncing || loading}
           >
             Publish
           </Button>

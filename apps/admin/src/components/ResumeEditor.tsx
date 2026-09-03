@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Field, Input, Textarea } from "@fluentui/react-components";
 import {
   Add20Regular,
@@ -12,17 +12,45 @@ import {
 import { resumeSchema, type Resume } from "@brendon/shared";
 import { publishedResume as seedResume } from "../published-seed";
 import { useDraft } from "../hooks";
-import { api, draftsApi } from "../api";
+import { api, draftsApi, publishedApi, type PublishedItem } from "../api";
 import { SaveStatus } from "./SaveStatus";
 export function ResumeEditor() {
-  const { value, setValue, state } = useDraft<Resume>(
+  const [published, setPublished] = useState<PublishedItem<Resume>>({
+    content: seedResume,
+    path: "apps/site/src/data/resume.json",
+    sha: "",
+  });
+  const [syncing, setSyncing] = useState(true);
+  const { value, setValue, state, reset, loading } = useDraft<Resume>(
     "resume",
     "main",
-    seedResume,
+    published.content,
   );
   const [preview, setPreview] = useState(false);
   const [message, setMessage] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    let alive = true;
+    publishedApi
+      .one<Resume>("resume")
+      .then((item) => {
+        if (alive) setPublished(item);
+      })
+      .catch((error) => {
+        if (alive)
+          setMessage(
+            error instanceof Error
+              ? error.message
+              : "Could not load the published résumé.",
+          );
+      })
+      .finally(() => {
+        if (alive) setSyncing(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
   const set = (key: keyof Resume, v: unknown) =>
     setValue((r) => ({
       ...r,
@@ -42,8 +70,17 @@ export function ResumeEditor() {
   };
   const publish = async () => {
     try {
-      resumeSchema.parse(value);
-      await draftsApi.publish("resume", value);
+      const valid = resumeSchema.parse(value);
+      const result = await draftsApi.publish("resume", valid, {
+        expectedSha: published.sha || undefined,
+      });
+      await draftsApi.remove("resume", "main");
+      setPublished({
+        content: valid,
+        path: result.path,
+        sha: result.contentSha,
+      });
+      reset(valid);
       setMessage("Published to GitHub. Site deployment is in progress.");
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Could not publish.");
@@ -73,6 +110,11 @@ export function ResumeEditor() {
           <p className="page-label">Résumé</p>
           <h1>Structured résumé</h1>
           <SaveStatus state={state} />
+          <p className="source-status">
+            {syncing || loading
+              ? "Loading current content from GitHub…"
+              : "Current published content loaded from GitHub"}
+          </p>
         </div>
         <div>
           <input
@@ -95,6 +137,7 @@ export function ResumeEditor() {
             appearance="primary"
             icon={<Send20Regular />}
             onClick={publish}
+            disabled={syncing || loading}
           >
             Publish
           </Button>

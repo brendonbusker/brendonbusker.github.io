@@ -244,6 +244,11 @@ select {
 .list-search > span {
   width: 100%;
 }
+.list-status {
+  margin: 8px 14px 14px;
+  color: #616161;
+  font-size: 12px;
+}
 .document-row {
   display: flex;
   width: 100%;
@@ -285,6 +290,11 @@ select {
 }
 .document-icon.published {
   background: #0e7c3a;
+}
+.source-status {
+  margin: 3px 0 0;
+  color: #616161;
+  font-size: 11px;
 }
 .post-editor {
   min-width: 0;

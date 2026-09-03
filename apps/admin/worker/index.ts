@@ -40,6 +40,14 @@ interface Env {
   PBKDF2_ITERATIONS: string;
 }
 type Variables = { sessionId: string; csrfHash: string };
+type PublishedType = "homepage" | "resume" | "posts" | "projects";
+type GitHubFile = {
+  type: "file";
+  path: string;
+  sha: string;
+  content?: string;
+  encoding?: string;
+};
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 const enc = new TextEncoder();
 const b64 = (bytes: Uint8Array) => {
@@ -376,7 +384,144 @@ app.delete("/api/drafts/:type/:key", async (c) => {
   return c.json({ ok: true });
 });
 
-function serializeContent(type: string, payload: any) {
+function githubHeaders(env: Env) {
+  return {
+    Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    "User-Agent": "Brendon-Busker-CMS",
+  };
+}
+
+async function githubContent(env: Env, path: string) {
+  const url = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${path}?ref=${encodeURIComponent(env.GITHUB_BRANCH)}`;
+  const response = await fetch(url, { headers: githubHeaders(env) });
+  if (!response.ok)
+    throw new Error(`GitHub content read failed (${response.status})`);
+  return response.json<GitHubFile | GitHubFile[]>();
+}
+
+async function githubTextFile(env: Env, path: string) {
+  if (!isAllowedRepositoryPath(path))
+    throw new Error("Repository path rejected");
+  const item = await githubContent(env, path);
+  if (Array.isArray(item) || item.type !== "file" || !item.content)
+    throw new Error("GitHub did not return a file");
+  const bytes = fromB64(item.content.replace(/\s/g, ""));
+  return {
+    path: item.path,
+    sha: item.sha,
+    text: new TextDecoder().decode(bytes),
+  };
+}
+
+function parseFrontmatterValue(raw: string): unknown {
+  const value = raw.trim();
+  if (!value) return "";
+  if (value === "true") return true;
+  if (value === "false") return false;
+  if (/^-?\d+(?:\.\d+)?$/.test(value)) return Number(value);
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("[") && value.endsWith("]")) ||
+    (value.startsWith("{") && value.endsWith("}"))
+  ) {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value.replace(/^"|"$/g, "");
+    }
+  }
+  return value;
+}
+
+export function parseManagedMarkdown(markdown: string) {
+  const normalized = markdown.replace(/\r\n/g, "\n");
+  if (!normalized.startsWith("---\n"))
+    throw new Error("Published content is missing frontmatter");
+  const end = normalized.indexOf("\n---\n", 4);
+  if (end < 0) throw new Error("Published content has invalid frontmatter");
+  const data: Record<string, unknown> = {};
+  let listKey = "";
+  for (const line of normalized.slice(4, end).split("\n")) {
+    const listItem = line.match(/^\s+-\s+(.+)$/);
+    if (listItem && listKey) {
+      const list = Array.isArray(data[listKey]) ? data[listKey] : [];
+      (list as unknown[]).push(parseFrontmatterValue(listItem[1] ?? ""));
+      data[listKey] = list;
+      continue;
+    }
+    const field = line.match(/^([A-Za-z][A-Za-z0-9]*):(?:\s*(.*))?$/);
+    if (!field) continue;
+    listKey = field[1] ?? "";
+    if (listKey)
+      data[listKey] = field[2] ? parseFrontmatterValue(field[2]) : [];
+  }
+  return { data, body: normalized.slice(end + 5).trim() };
+}
+
+async function publishedCollection(env: Env, type: "posts" | "projects") {
+  const directory = `apps/site/src/content/${type}`;
+  const listing = await githubContent(env, directory);
+  if (!Array.isArray(listing)) throw new Error("Expected a content directory");
+  const files = listing.filter(
+    (item) => item.type === "file" && item.path.endsWith(".md"),
+  );
+  const entries = await Promise.all(
+    files.map(async (item) => {
+      const file = await githubTextFile(env, item.path);
+      const parsed = parseManagedMarkdown(file.text);
+      const content =
+        type === "posts"
+          ? postSchema.parse({ ...parsed.data, body: parsed.body })
+          : projectSchema.parse({ ...parsed.data, overview: parsed.body });
+      return { content, path: file.path, sha: file.sha };
+    }),
+  );
+  return entries.sort((left, right) => {
+    const leftDate =
+      "publishedAt" in left.content
+        ? left.content.publishedAt
+        : left.content.updatedAt;
+    const rightDate =
+      "publishedAt" in right.content
+        ? right.content.publishedAt
+        : right.content.updatedAt;
+    return rightDate.localeCompare(leftDate);
+  });
+}
+
+app.get("/api/published/:type", async (c) => {
+  const type = c.req.param("type") as PublishedType;
+  try {
+    if (type === "homepage" || type === "resume") {
+      const path = `apps/site/src/data/${type === "homepage" ? "site" : "resume"}.json`;
+      const file = await githubTextFile(c.env, path);
+      const json: unknown = JSON.parse(file.text);
+      const content =
+        type === "homepage"
+          ? siteProfileSchema.parse(json)
+          : resumeSchema.parse(json);
+      return c.json({ content, path: file.path, sha: file.sha });
+    }
+    if (type === "posts" || type === "projects")
+      return c.json({ items: await publishedCollection(c.env, type) });
+    return c.json({ error: "Unsupported published content type." }, 404);
+  } catch (error) {
+    const id = crypto.randomUUID();
+    console.error(
+      "published_content_error",
+      id,
+      error instanceof Error ? error.message : "unknown",
+    );
+    return c.json(
+      { error: `Could not load published content. Reference ${id}.` },
+      502,
+    );
+  }
+});
+
+function serializeContent(type: string, payload: any, targetPath?: string) {
   if (type === "homepage")
     return {
       path: "apps/site/src/data/site.json",
@@ -394,7 +539,7 @@ function serializeContent(type: string, payload: any) {
     const date = p.publishedAt.slice(0, 10);
     const content = `---\nid: ${escapeYaml(p.id)}\ntitle: ${escapeYaml(p.title)}\nslug: ${escapeYaml(p.slug)}\npublishedAt: ${date}\nupdatedAt: ${p.updatedAt.slice(0, 10)}\nexcerpt: ${escapeYaml(p.excerpt || "")}\nstatus: published\n---\n\n${sanitizeMarkdown(p.body).trim()}\n`;
     return {
-      path: `apps/site/src/content/posts/${date}-${p.slug}.md`,
+      path: targetPath || `apps/site/src/content/posts/${date}-${p.slug}.md`,
       content,
       message: `cms: publish post "${p.title}"`,
     };
@@ -403,7 +548,7 @@ function serializeContent(type: string, payload: any) {
     const p = projectSchema.parse(payload);
     const content = `---\nid: ${escapeYaml(p.id)}\ntitle: ${escapeYaml(p.title)}\nslug: ${escapeYaml(p.slug)}\nsummary: ${escapeYaml(p.summary)}\ncategory: ${escapeYaml(p.category || "")}\nstatus: ${escapeYaml(p.status || "")}\nfeatured: ${p.featured}\npublished: ${p.published}\nsortOrder: ${p.sortOrder}\nliveUrl: ${escapeYaml(p.liveUrl || "")}\ngithubUrl: ${escapeYaml(p.githubUrl || "")}\nicon: ${escapeYaml(p.icon)}\naccent: ${escapeYaml(p.accent)}\ntechStack: ${JSON.stringify(p.techStack)}\nscreenshots: ${JSON.stringify(p.screenshots)}\nwhy: ${escapeYaml(p.why || "")}\nfeatures: ${JSON.stringify(p.features)}\nimplementation: ${escapeYaml(p.implementation || "")}\ncreatedAt: ${p.createdAt.slice(0, 10)}\nupdatedAt: ${p.updatedAt.slice(0, 10)}\n---\n\n${sanitizeMarkdown(p.overview || p.summary)}\n`;
     return {
-      path: `apps/site/src/content/projects/${p.slug}.md`,
+      path: targetPath || `apps/site/src/content/projects/${p.slug}.md`,
       content,
       message: `cms: update project "${p.title}"`,
     };
@@ -420,12 +565,7 @@ async function githubFile(
   if (!isAllowedRepositoryPath(path))
     throw new Error("Repository path rejected");
   const base = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${path}`;
-  const headers = {
-    Authorization: `Bearer ${env.GITHUB_TOKEN}`,
-    Accept: "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2022-11-28",
-    "User-Agent": "Brendon-Busker-CMS",
-  };
+  const headers = githubHeaders(env);
   const current = await fetch(
     `${base}?ref=${encodeURIComponent(env.GITHUB_BRANCH)}`,
     { headers },
@@ -453,7 +593,10 @@ async function githubFile(
   });
   if (!response.ok)
     throw new Error(`GitHub publish failed (${response.status})`);
-  return response.json<{ commit: { sha: string; html_url: string } }>();
+  return response.json<{
+    content: { path: string; sha: string };
+    commit: { sha: string; html_url: string };
+  }>();
 }
 app.post("/api/publish", async (c) => {
   try {
@@ -461,9 +604,28 @@ app.post("/api/publish", async (c) => {
       contentType: string;
       payload: unknown;
       expectedSha?: string;
+      targetPath?: string;
     }>();
     const valid = validateContent(body.contentType, body.payload);
-    const item = serializeContent(body.contentType, valid);
+    if (body.targetPath) {
+      const expectedPrefix =
+        body.contentType === "post"
+          ? "apps/site/src/content/posts/"
+          : body.contentType === "project"
+            ? "apps/site/src/content/projects/"
+            : "";
+      if (
+        !expectedPrefix ||
+        !body.targetPath.startsWith(expectedPrefix) ||
+        !isAllowedRepositoryPath(body.targetPath)
+      )
+        throw new Error("Repository path rejected");
+    }
+    const targetPath =
+      body.contentType === "post" || body.contentType === "project"
+        ? body.targetPath
+        : undefined;
+    const item = serializeContent(body.contentType, valid, targetPath);
     const result = await githubFile(
       c.env,
       item.path,
@@ -474,6 +636,8 @@ app.post("/api/publish", async (c) => {
     return c.json({
       commitUrl: result.commit.html_url,
       version: result.commit.sha,
+      contentSha: result.content.sha,
+      path: result.content.path,
     });
   } catch (error) {
     const id = crypto.randomUUID();
