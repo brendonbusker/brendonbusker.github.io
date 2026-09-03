@@ -1,0 +1,19 @@
+{
+  "name": "@brendon/site",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": { "dev": "astro dev", "dev:foreground": "cross-env ASTRO_DEV_BACKGROUND=0 astro dev", "build": "astro check && astro build", "typecheck": "astro check" },
+  "dependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@astrojs/rss": "^4.0.19",
+    "@astrojs/sitemap": "^3.7.4",
+    "@brendon/shared": "workspace:*",
+    "astro": "^7.2.9",
+    "lucide-static": "^0.542.0",
+    "marked": "^16.2.1",
+    "sanitize-html": "^2.17.0",
+    "sharp": "^0.35.4",
+    "typescript": "^5.9.2"
+  },
+  "devDependencies": { "@types/sanitize-html": "^2.16.0" }
+}

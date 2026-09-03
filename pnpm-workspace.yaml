@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+allowBuilds:
+  esbuild: true
+  sharp: true
+  workerd: true
+minimumReleaseAgeExclude:
+  - '@astrojs/sitemap@3.7.4'
+  - '@cloudflare/workers-types@5.20260901.1'

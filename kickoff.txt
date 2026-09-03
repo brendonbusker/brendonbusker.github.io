@@ -1,0 +1,3469 @@
+# CODEX BUILD HANDOFF
+
+# Personal Homepage / Writing Archive / Project Portfolio / Web Résumé / Private CMS
+
+## 0. YOUR ROLE
+
+You are responsible for designing, implementing, testing, configuring, and preparing for deployment a complete personal website and private content-management system.
+
+Treat this as a production-quality application, not a prototype.
+
+Do not produce a generic AI-generated portfolio.
+
+Do not produce a "vibe-coded" website full of floating cards, gradients, glassmorphism, pill-shaped everything, excessive animation, bento grids, or sections that all look like independent widgets.
+
+The public website should feel like a genuine personal website that someone intentionally designed over time.
+
+It should have personality and editorial structure.
+
+The CMS is allowed to feel like a sophisticated web application.
+
+The public website should feel like a website.
+
+The project gallery is the major exception where cards are intentionally desired.
+
+Build the entire system described below.
+
+Where implementation decisions are not explicitly specified, make sensible production-quality choices consistent with the design philosophy and architecture in this document.
+
+Do not stop to ask trivial visual questions. Make strong design decisions.
+
+---
+
+# 1. HIGH-LEVEL GOAL
+
+Build a personal homepage for:
+
+Brendon Busker
+
+Primary URL:
+
+https://USERNAME.github.io
+
+The repository will ultimately use GitHub's special user-site convention:
+
+USERNAME/USERNAME.github.io
+
+The site has four major purposes:
+
+1. Introduce Brendon personally and professionally.
+2. Maintain an ongoing dated writing log/blog describing what he has been working on, building, thinking about, experimenting with, etc.
+3. Showcase web applications and other projects he has built.
+4. Present his résumé as a thoughtfully designed webpage with a downloadable latest PDF.
+
+The site must also have a secure private CMS where Brendon can manage all frequently editable content without changing source code manually.
+
+---
+
+# 2. CORE DESIGN PHILOSOPHY
+
+## Public website
+
+The site should feel:
+
+* personal
+* welcoming
+* thoughtful
+* editorial
+* clean
+* modern
+* professional without being corporate
+* technically competent without screaming "developer portfolio"
+* restrained
+* human
+
+A coworker, recruiter, friend, internet stranger, or someone who finds one of Brendon's projects should all feel equally invited to explore.
+
+The public site must NOT resemble a SaaS dashboard.
+
+It must NOT look as though a component library was assembled by an AI.
+
+Avoid the common "vibe code" aesthetic.
+
+### Specifically avoid
+
+* a card around every section
+* excessive rounded rectangles
+* giant gradient backgrounds
+* gradient text headings
+* glassmorphism
+* floating blurry colored orbs
+* excessive shadows
+* bento-grid homepages
+* meaningless statistics cards
+* icon + heading + paragraph repeated six times
+* pill-shaped navigation everywhere
+* tech badges everywhere
+* unnecessary animated counters
+* scroll animations on every element
+* gigantic CTA buttons
+* fake testimonials
+* generic copy such as "Building delightful digital experiences"
+* emoji used as the primary visual language
+* excessive monospace typography
+* glowing borders
+* excessive hover tilting
+* generic portfolio templates
+* "Built with ❤️" style footer copy
+
+The goal is restraint.
+
+---
+
+# 3. VISUAL PERSONALITY
+
+Primary visual direction:
+
+LIGHT interface with DARK elements.
+
+The design should use a warm or slightly soft light background rather than clinical pure white everywhere.
+
+Suggested starting palette:
+
+* Paper/background: warm off-white
+* Main text: near-black / ink
+* Secondary text: graphite
+* Rules/borders: subtle warm gray
+* Dark surfaces: near-black / charcoal
+* Accent: one restrained deep blue or similarly mature accent
+
+Do not create a rainbow design system.
+
+One accent color is enough.
+
+Exact colors should be centralized as CSS variables/design tokens.
+
+### Typography
+
+Typography is one of the most important elements of the public site.
+
+Use a strong editorial pairing.
+
+Recommended direction:
+
+* expressive but restrained serif for major editorial headings / writing titles
+* clean sans-serif for body copy, navigation, metadata, and project UI
+
+Possible families include:
+
+* Newsreader + Inter
+* Source Serif 4 + Source Sans 3
+* another similarly high-quality open font pairing
+
+Choose the combination that looks strongest.
+
+Do NOT make everything sans-serif.
+
+Do NOT use a coding font as the primary typography.
+
+Long-form writing must be genuinely pleasant to read.
+
+Target approximately 65–75 characters per line for post body text.
+
+---
+
+# 4. PUBLIC INFORMATION ARCHITECTURE
+
+Primary navigation:
+
+Home
+Projects
+Résumé
+
+Do not add unnecessary top-level tabs.
+
+Writing lives naturally on the homepage and through its archive.
+
+Suggested public routes:
+
+/
+/notes/
+/notes/YYYY/MM/DD/slug/
+/projects/
+/resume/
+/admin/
+
+The exact post route may be adjusted if a cleaner static route is preferable, but URLs must be permanent, human-readable, and date-aware.
+
+For example:
+
+/notes/2026/08/31/starting-this-site/
+
+Every published post must have a permanent URL.
+
+---
+
+# 5. HEADER / NAVIGATION
+
+Create a restrained site header.
+
+Desktop:
+
+Brendon Busker on the left.
+
+Home / Projects / Résumé on the right.
+
+The navigation should look like typography and navigation, not three giant pill buttons.
+
+A subtle active-page treatment is appropriate.
+
+The header may become sticky after scrolling if it improves usability, but do not make it a floating glass panel.
+
+Mobile:
+
+Use a thoughtful compact navigation.
+
+Do not default to an oversized generic hamburger drawer unless necessary.
+
+Make keyboard navigation and focus states excellent.
+
+---
+
+# 6. LANDING PAGE
+
+The landing page is the emotional center of the website.
+
+It must NOT begin with project cards.
+
+It must begin with Brendon.
+
+## Hero / introduction
+
+Use Brendon's full name prominently.
+
+Follow it with an editable professional identity / headline.
+
+Then include a more personal introductory paragraph.
+
+The result should communicate both:
+
+"This is who I am professionally."
+
+and
+
+"This is my personal corner of the internet."
+
+It should not read like the opening paragraph of a résumé.
+
+It should not read like LinkedIn boilerplate.
+
+The intro needs to feel approachable.
+
+All of this content must be editable through the CMS:
+
+* name
+* professional headline
+* intro paragraph
+* optional secondary sentence
+* relevant profile/social links if configured
+
+The hero should have generous whitespace.
+
+Use typography, layout, rules, and spacing to create visual interest rather than putting the hero inside a giant card.
+
+A subtle link to Projects and/or the newest writing entry is fine, but avoid generic giant CTA buttons.
+
+---
+
+# 7. WRITING / NOTES SECTION ON HOMEPAGE
+
+Immediately below the introduction should be Brendon's ongoing writing.
+
+This is an important part of the site.
+
+Think:
+
+personal journal
++
+development log
++
+informal blog
++
+"what I've been doing lately"
+
+Do not make it look like a social media feed.
+
+Do not put every entry inside a bubble.
+
+## Latest entry
+
+The newest published entry should receive strong visual emphasis.
+
+Display:
+
+Date
+Title
+Body or meaningful beginning of body
+Optional "continue reading" if long
+
+A short post may display completely on the homepage.
+
+A longer post may show a tasteful excerpt.
+
+The date must be visibly clickable.
+
+The title must also be clickable.
+
+Both lead to the permanent post page.
+
+Example visual hierarchy:
+
+AUGUST 31, 2026
+
+Building a place for my projects
+
+Post content begins here...
+
+Use typography, whitespace, and horizontal rules instead of cards.
+
+## Previous entries
+
+Below the newest entry, provide a chronological trail of recent posts.
+
+Each entry should show:
+
+date
+title
+optional short excerpt
+
+The design should give the sense that this collection will slowly accumulate over years.
+
+After 20, 50, or 100 posts, it should still look intentional.
+
+This should feel like a timeline/archive rather than a dashboard.
+
+Provide a subtle:
+
+View all notes →
+
+link to the full archive.
+
+---
+
+# 8. NOTES ARCHIVE
+
+Route:
+
+/notes/
+
+Display all published writing.
+
+Group posts by year.
+
+Example:
+
+2027
+
+March 14
+Title of post
+
+March 02
+Another title
+
+2026
+
+December 18
+Title
+
+August 31
+Building this website
+
+Do not make every archive row a card.
+
+Use an editorial list.
+
+Dates and titles should both be interactive.
+
+Provide excellent hover/focus treatment using typography, lines, or subtle movement.
+
+The archive should scale to hundreds of entries.
+
+---
+
+# 9. INDIVIDUAL POST PAGE
+
+Each post gets a static page generated during the GitHub Pages build.
+
+Page anatomy:
+
+date
+title
+optional short dek/subtitle if eventually supported
+body
+optional images
+previous / next post navigation
+return to archive link
+
+The body must support:
+
+* paragraphs
+* headings
+* bold
+* italics
+* underline if the CMS supports it cleanly
+* strikethrough
+* links
+* bulleted lists
+* numbered lists
+* block quotes
+* inline code
+* code blocks
+* horizontal rules
+* tables
+* images
+
+Raw arbitrary HTML should NOT be accepted from CMS users.
+
+The content pipeline must protect against stored XSS.
+
+Use semantic Markdown or another safe structured representation.
+
+Code blocks should look elegant but not transform the entire site into a developer blog.
+
+---
+
+# 10. PROJECTS PAGE
+
+Route:
+
+/projects/
+
+This is the area where a card/widget visual style is explicitly desirable.
+
+Create a polished responsive project gallery.
+
+Each project card should contain:
+
+* project icon or visual identifier
+* project name
+* short summary
+* optional project type/category
+* optional status
+* restrained metadata when useful
+
+Do not overcrowd cards with technology badges.
+
+## Project icons
+
+Every project should have a clearly recognizable icon.
+
+Support:
+
+1. a curated icon library
+2. custom project artwork/image where appropriate
+
+Prefer a professional icon library such as Lucide or Fluent System Icons.
+
+Do not use random emoji as permanent project icons.
+
+## Card design
+
+Cards may have more visual personality than the rest of the site.
+
+Use moderate corner radius.
+
+Use strong typography.
+
+Use project-specific accent treatment.
+
+Cards should still belong to the overall design language.
+
+---
+
+# 11. PROJECT HOVER ANIMATIONS
+
+Each project card should have a polished hover/focus animation.
+
+Animations should feel intentional and premium.
+
+Examples of acceptable motion:
+
+* icon subtly shifts or rotates
+* background geometry changes
+* a screenshot subtly reveals itself
+* a line draws across part of the card
+* content shifts by a few pixels
+* subtle depth
+* accent panel slides into view
+* tiny layered parallax effect
+
+Avoid:
+
+* giant 3D tilt
+* aggressive scaling
+* bouncing
+* spinning
+* glowing neon
+* excessive particle effects
+
+Hover animation should generally take roughly 150–350ms.
+
+Keyboard focus should receive an equivalent understandable visual treatment.
+
+Respect:
+
+prefers-reduced-motion
+
+Users requesting reduced motion should receive little or no nonessential animation.
+
+---
+
+# 12. PROJECT DETAIL MODAL
+
+Clicking a project card should NOT navigate away to a normal dedicated project page.
+
+Instead, open a large project-detail modal/dialog overlay.
+
+This is an explicit requirement.
+
+The overlay should feel substantial enough to tell the project's story.
+
+Possible structure:
+
+Project icon
+Project name
+Short summary
+
+Large project screenshot / visual
+
+Overview
+Why I built it
+What it does
+Notable features
+
+Technology / implementation
+
+Additional screenshots
+
+Live Project
+GitHub Repository
+
+Not all projects need every field.
+
+The CMS should allow optional fields.
+
+## Modal behavior
+
+Must include:
+
+* accessible dialog semantics
+* keyboard focus trap
+* ESC closes
+* click outside closes where sensible
+* visible close button
+* background scroll lock
+* restore focus to originating card on close
+* mobile-friendly layout
+
+Use browser history intelligently.
+
+Opening a project should update a query string or history state, for example:
+
+/projects/?project=shiny-tracker
+
+This allows:
+
+* Back button to close the modal
+* sharing a direct project link
+* loading the page with that project already open
+
+Do not require a separate full project page for normal navigation.
+
+---
+
+# 13. RÉSUMÉ PAGE
+
+Route:
+
+/resume/
+
+Do NOT simply embed the PDF.
+
+The primary experience is a beautifully designed HTML résumé.
+
+The downloadable PDF is secondary.
+
+## Visual direction
+
+Continue the editorial philosophy.
+
+Do not make every job a card.
+
+Use typography, hierarchy, spacing, lines, and a career timeline.
+
+Desktop could use:
+
+left column:
+name
+headline
+summary
+contact/social links
+skills
+
+main column:
+experience
+education
+other relevant sections
+
+OR another similarly sophisticated editorial composition.
+
+Mobile should collapse naturally.
+
+## Content
+
+Support structured data for:
+
+* full name
+* professional headline
+* professional summary
+* contact links
+* work experience
+* employer
+* role
+* location if desired
+* start/end dates
+* current role
+* accomplishment bullets
+* education
+* certifications if needed
+* skill groups
+* selected professional links
+* latest résumé PDF
+
+## PDF
+
+Provide:
+
+Download PDF
+
+The current PDF should exist at a stable public path such as:
+
+/resume/Brendon-Busker-Resume.pdf
+
+or another clean stable route.
+
+Do not require users to use an embedded PDF viewer.
+
+---
+
+# 14. PUBLIC FOOTER
+
+Keep the footer extremely restrained.
+
+Potential content:
+
+Brendon Busker
+Current year
+GitHub / LinkedIn / contact links if configured
+
+Do not include generic template language.
+
+No "Made with love."
+
+No giant second navigation system.
+
+---
+
+# 15. PUBLIC SITE TECH STACK
+
+Use:
+
+Astro
+TypeScript
+Astro Content Collections
+semantic HTML
+modern CSS
+minimal client-side JavaScript
+
+Do NOT build the entire public website as a React SPA.
+
+React should only be used where interaction genuinely requires it.
+
+The public site should primarily be prerendered static HTML.
+
+This provides:
+
+* excellent GitHub Pages compatibility
+* actual permanent post URLs
+* fast load times
+* SEO
+* accessibility
+* resilience
+* almost zero public backend dependency
+
+## Styling
+
+Prefer:
+
+custom CSS
+CSS variables
+CSS modules or clearly organized component styles
+modern layout primitives
+Grid
+Flexbox
+container queries where helpful
+
+Avoid using Tailwind as the primary design language.
+
+This is intentional.
+
+The goal is to discourage generic utility-class/component-template design and maintain a deliberate editorial design system.
+
+---
+
+# 16. GITHUB PAGES DEPLOYMENT
+
+The public site must deploy to:
+
+https://USERNAME.github.io
+
+using repository:
+
+USERNAME/USERNAME.github.io
+
+Configure Astro accordingly.
+
+Because this is the special root user repository, do not configure an unnecessary repository-name base path.
+
+Use GitHub Actions to build and publish the Astro site to GitHub Pages.
+
+Use the official/recommended Astro GitHub Pages deployment approach.
+
+A push to the main branch containing published content or public-site changes should trigger deployment.
+
+The site must build successfully from a fresh clone.
+
+---
+
+# 17. CRITICAL ARCHITECTURE DECISION: STATIC PUBLISHED CONTENT
+
+Published content should live in the GitHub repository.
+
+DO NOT make normal public page views depend on Cloudflare/D1 API calls.
+
+This is extremely important.
+
+Published:
+
+posts
+project information
+homepage content
+résumé structured data
+
+should become repository content that Astro statically generates.
+
+Advantages:
+
+* public traffic does not burn Worker requests
+* an attack on the Worker does not take down the public site
+* GitHub Pages continues working even if Cloudflare is unavailable
+* search engines receive normal HTML
+* post URLs are genuine static pages
+* Git history becomes an additional content history
+* no loading spinner for blog content
+* no client-side CMS API dependency
+
+Cloudflare is primarily the PRIVATE publishing backend.
+
+---
+
+# 18. CONTENT STORAGE IN REPOSITORY
+
+Suggested structure:
+
+apps/
+site/
+admin/
+
+packages/
+shared/
+
+content or site content directory:
+posts/
+projects/
+resume/
+site/
+
+public/
+uploads/
+posts/
+projects/
+resume/
+
+Exact structure may differ based on Astro conventions.
+
+Prefer Astro Content Collections with strict schemas.
+
+## Posts
+
+Each post should ultimately become Markdown such as:
+
+posts/2026-08-31-building-this-site.md
+
+Frontmatter should include at minimum:
+
+id
+title
+slug
+publishedAt
+updatedAt
+excerpt if applicable
+
+Body contains Markdown.
+
+## Projects
+
+Projects may use Markdown + frontmatter or validated JSON.
+
+Suggested fields:
+
+id
+title
+slug
+summary
+category
+status
+featured
+sortOrder
+liveUrl
+githubUrl
+icon
+accent
+techStack
+screenshots
+createdAt
+updatedAt
+
+Long-form project detail content may use Markdown.
+
+## Homepage
+
+Use a validated structured file.
+
+Fields:
+
+fullName
+professionalHeadline
+intro
+secondaryIntro
+socialLinks
+
+## Résumé
+
+Use validated structured JSON/YAML/TypeScript data.
+
+Do not make the résumé page parse the PDF.
+
+The PDF and web résumé are separate representations controlled from the CMS.
+
+---
+
+# 19. PRIVATE CMS
+
+Brendon must be able to manage the website without manually editing source files.
+
+The CMS should feel like a professional publishing product.
+
+The strongest visual inspiration is:
+
+MICROSOFT 365
+MICROSOFT WORD
+FLUENT DESIGN
+
+It should feel like Microsoft designed a small publishing suite.
+
+This applies to:
+
+spacing
+toolbar behavior
+menus
+command bars
+forms
+icons
+dialogs
+side navigation
+text editor
+status indicators
+keyboard shortcuts
+
+Do NOT use Microsoft logos or pretend the product is Microsoft software.
+
+Using Microsoft's open-source Fluent UI components and Fluent System Icons is encouraged.
+
+---
+
+# 20. ADMIN TECH STACK
+
+Build the CMS/admin application with:
+
+React
+TypeScript
+Vite
+Fluent UI React
+Fluent System Icons where appropriate
+Tiptap / ProseMirror for rich-text editing
+Zod for shared validation
+Cloudflare Workers
+Hono or similarly lightweight Worker router
+Cloudflare D1
+
+Use a monorepo/workspace if it provides clean shared schemas.
+
+pnpm workspace is preferred.
+
+Possible structure:
+
+apps/site
+apps/admin
+packages/shared
+
+packages/shared should contain:
+
+* schemas
+* TypeScript types
+* content validation
+* markdown serialization rules
+* shared constants
+* security-safe content utilities
+
+Do not unnecessarily share UI between the editorial public site and Microsoft-inspired admin interface.
+
+They SHOULD look different.
+
+---
+
+# 21. `/admin` SECURITY ARCHITECTURE
+
+The public site must contain:
+
+https://USERNAME.github.io/admin/
+
+However, GitHub Pages cannot securely host the authenticated server-side application itself.
+
+Therefore implement `/admin/` as a secure gateway into the Cloudflare-hosted CMS.
+
+Recommended implementation:
+
+USERNAME.github.io/admin/
+
+shows an extremely minimal loading page:
+
+"Opening secure editor…"
+
+and immediately redirects with:
+
+window.location.replace(...)
+
+to the Cloudflare Worker admin origin.
+
+Example:
+
+https://personal-site-admin.USERNAME.workers.dev/
+
+Include a normal clickable fallback link for accessibility if JavaScript is unavailable.
+
+## Why
+
+The CMS frontend and authentication API should live on the SAME Cloudflare origin.
+
+This permits proper first-party:
+
+HttpOnly
+Secure
+SameSite=Strict
+
+session cookies.
+
+Do NOT create a cross-origin authentication architecture where the GitHub Pages frontend depends on third-party cookies from workers.dev.
+
+Do NOT put session credentials into localStorage.
+
+The secure CMS is Worker-hosted.
+
+The public `/admin/` route remains the human-friendly entry point.
+
+If the site later receives a custom domain, this architecture should be easy to migrate to:
+
+admin.example.com
+
+---
+
+# 22. CLOUDFLARE RESPONSIBILITY
+
+Cloudflare handles only private/admin functionality:
+
+* admin frontend
+* login
+* logout
+* session management
+* draft autosaving
+* private CMS APIs
+* publishing to GitHub
+* abuse prevention
+* audit/security logs
+* Turnstile verification
+
+Public reading of the website should NOT require the Worker.
+
+---
+
+# 23. ADMIN LOGIN
+
+Create a polished but minimal login screen.
+
+Fields:
+
+Username
+Password
+
+Optional:
+
+Turnstile challenge
+
+No registration.
+
+No sign-up.
+
+No forgotten-password email workflow.
+
+No public user creation.
+
+There is exactly one administrator.
+
+The username/password must NEVER appear in:
+
+* frontend JavaScript
+* HTML
+* bundled assets
+* repository source
+* source maps
+* public environment variables
+* logs
+
+Browser DevTools must reveal nothing that allows determining the valid credentials.
+
+---
+
+# 24. PASSWORD STORAGE
+
+Never store the plaintext password.
+
+Use a strong server-side password verifier.
+
+Cloudflare Workers have tight CPU limitations on the free tier, so choose the strongest password KDF that operates reliably within the current free Worker CPU budget.
+
+Preferred order:
+
+1. scrypt using supported Worker crypto APIs if performance is reliably within budget
+2. PBKDF2-HMAC-SHA-256 using WebCrypto with a benchmarked safe iteration count
+3. if neither can safely fit the free CPU budget, use a carefully documented high-entropy-password strategy with a keyed HMAC verifier and mandatory password-manager-generated password
+
+Do NOT silently downgrade to plain SHA-256(password).
+
+Require a very strong admin password.
+
+Recommended policy:
+
+at least 20 characters
+
+Ideally use a password-manager-generated random password.
+
+Store necessary verifier/salt/pepper values as Cloudflare Worker Secrets, not source configuration.
+
+Create a local setup script that allows the user to enter the password interactively without putting plaintext into shell history.
+
+Codex must never ask Brendon to paste his real password into source code or a prompt.
+
+---
+
+# 25. SESSION SECURITY
+
+After successful login:
+
+Generate a cryptographically random session token of at least 256 bits.
+
+Store only a HASH of the token server-side in D1.
+
+Set the raw session token only in a cookie.
+
+Cookie requirements:
+
+HttpOnly
+Secure
+SameSite=Strict
+Path=/
+no Domain attribute
+
+Prefer a cookie name compatible with the `__Host-` convention.
+
+Example:
+
+__Host-admin_session
+
+Session rules:
+
+* short idle timeout, approximately 30–60 minutes
+* reasonable absolute timeout, approximately 8 hours
+* logout immediately invalidates session
+* expired sessions rejected server-side
+* session ID rotated after login
+* do not reuse expired tokens
+* update last activity thoughtfully without unnecessary D1 writes on every trivial request
+
+Do not store authentication tokens in localStorage.
+
+---
+
+# 26. CSRF / ORIGIN PROTECTION
+
+All mutating CMS actions must be protected.
+
+Because admin frontend and API are same-origin:
+
+* reject unexpected Origin headers
+* use SameSite=Strict session cookies
+* use CSRF tokens for state-changing operations as defense in depth
+* do not enable permissive CORS
+* do not use `Access-Control-Allow-Origin: *`
+
+The admin API is NOT intended for public cross-origin consumption.
+
+---
+
+# 27. LOGIN ABUSE / BRUTE FORCE PROTECTION
+
+This is a HARD REQUIREMENT.
+
+The user is specifically concerned that someone may discover `/admin` and attempt huge numbers of password guesses or intentionally consume the Cloudflare free allowance.
+
+Implement multiple layers.
+
+## Cloudflare Rate Limiting
+
+Use a Cloudflare Workers Rate Limiting binding.
+
+At minimum create:
+
+per-IP login limiter
+
+and
+
+global login limiter
+
+The limiter must run BEFORE expensive password verification and BEFORE unnecessary D1 operations.
+
+Suggested starting behavior:
+
+Per IP:
+approximately 5 attempts/minute
+
+Global:
+approximately 20–30 password-verification attempts/minute
+
+Tune appropriately.
+
+Return:
+
+HTTP 429 Too Many Requests
+
+when blocked.
+
+Do not reveal whether the username exists.
+
+## Turnstile
+
+Use Cloudflare Turnstile on login.
+
+Prefer Managed mode.
+
+Turnstile should be configured only for the admin hostname.
+
+Server-side validation is mandatory.
+
+Never trust a frontend Turnstile success state without server verification.
+
+## Failed login handling
+
+Return the same message:
+
+"Invalid username or password."
+
+Never return:
+
+"Username not found."
+
+Do not create an account-wide lockout that lets an attacker permanently lock Brendon out.
+
+Use throttling rather than a simplistic global account lock.
+
+## Security logging
+
+Record useful security events such as:
+
+login success
+login failure
+rate limit
+logout
+expired session
+rejected origin
+CSRF failure
+
+Do NOT log:
+
+passwords
+password hashes
+session tokens
+GitHub token
+Turnstile secret
+other secrets
+
+Hash or otherwise privacy-protect IP identifiers in logs where practical.
+
+Cap log retention.
+
+---
+
+# 28. FREE-TIER FAILURE PHILOSOPHY
+
+Design around Cloudflare's free tier.
+
+Do not intentionally enable architecture that automatically produces unpredictable usage bills.
+
+If the Worker reaches a free-tier limit, acceptable behavior is:
+
+Admin temporarily unavailable.
+
+Unacceptable behavior is:
+
+Unexpected cost exposure.
+
+Because the public website is static GitHub Pages, the public website should remain available if the admin Worker is exhausted or unavailable.
+
+---
+
+# 29. D1 DATABASE
+
+Use Cloudflare D1 for PRIVATE CMS state.
+
+Do NOT treat D1 as the primary published-content database.
+
+Suggested tables:
+
+## sessions
+
+id
+token_hash
+created_at
+last_seen_at
+expires_at
+absolute_expires_at
+
+## drafts
+
+id
+content_type
+content_key
+payload_json
+created_at
+updated_at
+
+content_type examples:
+
+post
+project
+homepage
+resume
+
+## security_events
+
+id
+event_type
+created_at
+ip_fingerprint
+user_agent_summary
+metadata_json
+
+Optionally:
+
+## admin_preferences
+
+for harmless CMS preferences.
+
+Use migrations.
+
+Validate database inputs.
+
+Use prepared statements / parameter binding.
+
+---
+
+# 30. ADMIN APPLICATION LAYOUT
+
+The CMS should feel like a small Microsoft publishing suite.
+
+Desktop-first, but responsive.
+
+Recommended shell:
+
+Top application bar
+
+Left navigation rail
+
+Main workspace
+
+Optional contextual inspector panel
+
+Navigation:
+
+Home
+Posts
+Projects
+Résumé
+Site
+Settings
+
+Top-right:
+
+save state
+preview
+publish when applicable
+account/logout menu
+
+Use Fluent UI behavior.
+
+Do not over-round everything.
+
+Use familiar Microsoft-style command surfaces.
+
+---
+
+# 31. CMS HOME / DASHBOARD
+
+The admin home should be useful, not a vanity dashboard.
+
+Show things such as:
+
+Latest published post
+Drafts
+Last site publish
+Number of projects
+Current résumé update date
+Quick actions
+
+Quick actions:
+
+New Post
+Edit Homepage
+Add Project
+Edit Résumé
+
+Do not fill the dashboard with meaningless graphs.
+
+---
+
+# 32. POST MANAGEMENT
+
+Posts view should resemble a professional document list.
+
+Columns/information:
+
+Title
+Post date
+Status
+Last edited
+Last published
+
+Statuses:
+
+Draft
+Published
+
+Potentially:
+
+Modified since publish
+
+Actions:
+
+Edit
+Duplicate if useful
+Delete
+Preview
+Publish
+
+Allow sorting.
+
+Provide search once the archive becomes large.
+
+---
+
+# 33. POST EDITOR
+
+This is one of the most important parts of the CMS.
+
+The editor should feel heavily inspired by Microsoft Word.
+
+Use Tiptap/ProseMirror underneath.
+
+Use Fluent UI for the command interface.
+
+## Editor layout
+
+Top:
+
+Title
+
+Post metadata:
+date
+slug
+excerpt if desired
+
+Then a Word-inspired editing ribbon / command bar.
+
+Possible ribbon groupings:
+
+Home
+Insert
+
+You do not need to mimic every Microsoft Word tab literally.
+
+The important part is the professional interaction quality.
+
+## Formatting features
+
+Support:
+
+Undo
+Redo
+
+Paragraph style
+Heading 1
+Heading 2
+Heading 3
+
+Bold
+Italic
+Underline
+Strikethrough
+
+Text alignment:
+left
+center
+right
+
+Bulleted list
+Numbered list
+Checklist if cleanly supported
+
+Block quote
+
+Inline code
+Code block
+
+Link
+
+Horizontal rule
+
+Table
+
+Image insertion
+
+Clear formatting
+
+Optional constrained highlight/text-color controls
+
+Do not permit arbitrary destructive font styling that causes posts to stop matching the public site's design system.
+
+For example, instead of allowing any font on Earth, provide semantic styles that the public site maps into its typography.
+
+The CMS may LOOK like Word while still preserving semantic publishing.
+
+---
+
+# 34. POST EDITING EXPERIENCE
+
+Must include:
+
+autosave draft
+explicit save state
+preview
+publish
+unsaved-change warning
+keyboard shortcuts
+
+Recommended keyboard behavior:
+
+Ctrl/Cmd + S = save draft
+
+Ctrl/Cmd + Z = undo
+
+Ctrl/Cmd + Shift + Z = redo
+
+Ctrl/Cmd + B = bold
+
+Ctrl/Cmd + I = italic
+
+Standard editor conventions should behave as expected.
+
+Show state clearly:
+
+Saving…
+Saved
+Unsaved changes
+Publishing…
+Published
+
+Avoid noisy toast spam for autosaves.
+
+---
+
+# 35. POST DATES
+
+Default new posts to today's local date.
+
+Allow the user to change the publication date before publishing.
+
+The site does NOT assume one post per day.
+
+There can be:
+
+days with no posts
+
+potentially multiple posts on the same day
+
+Do not use date as the sole primary key.
+
+Use UUID + slug.
+
+---
+
+# 36. HOMEPAGE CMS
+
+Create an editor for the homepage introduction.
+
+Editable:
+
+Full name
+Professional identity/headline
+Intro paragraph
+Optional secondary intro
+Social/profile links
+
+Provide a preview representative of the actual public hero.
+
+This content is published into the repository and rebuilt statically.
+
+---
+
+# 37. PROJECT CMS
+
+Projects should be fully manageable.
+
+Project list should support:
+
+Add
+Edit
+Delete
+Hide/unpublish
+Reorder
+Feature/unfeature
+
+Use drag handles for ordering if accessible.
+
+Project fields:
+
+Project name
+Slug
+Short summary
+Category/type
+Status
+Long description
+Why I built it
+Features
+Technology
+Live URL
+GitHub URL
+Icon
+Accent treatment
+Screenshots
+Featured
+Sort order
+
+Fields can be optional where sensible.
+
+## Icon selection
+
+Provide a polished icon picker from the chosen icon set.
+
+Searchable icon selection is preferred.
+
+Allow custom raster artwork if desired.
+
+Avoid arbitrary unsanitized SVG upload.
+
+---
+
+# 38. PROJECT MEDIA
+
+Support screenshot upload from the CMS.
+
+Before publishing images:
+
+* validate MIME type
+* enforce reasonable size
+* reject dangerous files
+* resize large images
+* optimize/compress
+* prefer WebP/AVIF where appropriate
+* preserve enough resolution for project modal use
+
+Suggested maximum image dimension:
+
+roughly 1800–2200px on the longest side.
+
+Do not commit enormous raw screenshots.
+
+Generate predictable filenames.
+
+Example:
+
+public/uploads/projects/shiny-tracker/dashboard.webp
+
+---
+
+# 39. PROJECT PREVIEW
+
+The CMS should show what the project card will approximately look like.
+
+Preview:
+
+icon
+title
+summary
+accent
+card interaction state where feasible
+
+Also preview the modal content.
+
+It does not need to run the live public site inside the CMS, but it should provide strong confidence before publishing.
+
+---
+
+# 40. RÉSUMÉ CMS
+
+Build a structured résumé editor.
+
+Sections should be repeatable and reorderable.
+
+## Basic information
+
+Name
+Headline
+Summary
+Relevant links
+
+## Experience
+
+Each entry:
+
+Company
+Role
+Location
+Start date
+End date
+Current toggle
+Description
+Achievement bullets
+
+Allow reordering.
+
+## Education
+
+School
+Degree
+Field
+Dates
+Additional details
+
+## Skills
+
+Create skill groups rather than one enormous tag cloud.
+
+Example:
+
+Consulting
+Platforms
+Technical
+Data
+Tools
+
+## Other sections
+
+Support optional:
+
+Certifications
+Awards
+Selected work
+
+Do not force them to appear.
+
+---
+
+# 41. RÉSUMÉ PDF MANAGEMENT
+
+The CMS should allow replacing the latest résumé PDF.
+
+Validate:
+
+PDF MIME/type
+file size
+file signature where reasonable
+
+Use a stable destination path.
+
+When a new PDF is published:
+
+replace the public latest resume PDF.
+
+The old version may remain recoverable through Git history.
+
+Do not store the PDF in D1.
+
+Commit it to the GitHub repository.
+
+---
+
+# 42. DRAFT VS PUBLISHED CONTENT
+
+This distinction matters.
+
+D1 = draft/private editing state.
+
+GitHub repository = published canonical content.
+
+Workflow:
+
+CMS editing
+↓
+autosave to D1
+↓
+Preview
+↓
+Publish
+↓
+Worker validates content
+↓
+Worker commits content/assets to GitHub
+↓
+GitHub Actions builds Astro
+↓
+GitHub Pages deploys
+↓
+public website updates
+
+A draft must never accidentally become public.
+
+---
+
+# 43. GITHUB PUBLISHING FROM WORKER
+
+Use the GitHub REST API.
+
+Create a FINE-GRAINED GitHub Personal Access Token scoped ONLY to the:
+
+USERNAME.github.io
+
+repository.
+
+Grant the smallest permissions necessary.
+
+Target:
+
+Repository Contents: Read and Write
+
+Do NOT grant:
+
+account-wide repository access
+administration
+issues
+pull requests
+actions management
+workflows write
+
+unless implementation proves a permission is strictly necessary.
+
+The CMS should modify normal content/assets only.
+
+It must NEVER modify:
+
+.github/workflows/
+
+from the Worker.
+
+Enforce this with a hard server-side path allowlist.
+
+Even if the token technically has repository content permission, the application itself must reject attempts to write outside approved content/public asset locations.
+
+---
+
+# 44. GITHUB SECRET STORAGE
+
+Store the GitHub token only as a Cloudflare Worker Secret.
+
+Never put it in:
+
+GitHub repository source
+wrangler plaintext vars
+frontend environment variables
+D1
+browser storage
+logs
+
+Use:
+
+wrangler secret put
+
+or equivalent secure setup.
+
+---
+
+# 45. GITHUB WRITE SAFETY
+
+Protect against path traversal and arbitrary repository modification.
+
+The Worker must construct destination paths server-side.
+
+Do not accept an arbitrary repository file path from the browser.
+
+Example:
+
+Browser sends:
+
+project slug + image
+
+Server derives:
+
+public/uploads/projects/{validatedSlug}/{generatedFilename}.webp
+
+Reject:
+
+..
+slashes where not expected
+encoded traversal
+null bytes
+unexpected extensions
+
+Serialize GitHub writes.
+
+Handle SHA conflicts gracefully.
+
+Because there is a single administrator, optimistic concurrency is sufficient.
+
+If the remote repository changed since the editor loaded, warn before overwriting.
+
+---
+
+# 46. PUBLISH STATUS
+
+After a successful GitHub commit, do not falsely claim the GitHub Pages deployment has completed.
+
+Show something like:
+
+"Published to GitHub. Site deployment is in progress."
+
+If practical, provide a lightweight mechanism to determine when the new content is live.
+
+A good optional design:
+
+Include a public build/content version file in the site.
+
+After publish, the CMS can periodically check the public site's version.
+
+When it matches the new published version:
+
+"Live"
+
+Do not require additional GitHub Actions permissions just for status if a simpler public check works.
+
+---
+
+# 47. ADMIN FILE UPLOAD SECURITY
+
+Allowed types should be explicit.
+
+Project/post images:
+
+JPEG
+PNG
+WebP
+possibly AVIF
+
+Resume:
+
+PDF
+
+Disallow:
+
+HTML
+JavaScript
+executables
+unknown binary files
+
+Do not trust the filename extension alone.
+
+Inspect MIME and basic file signatures.
+
+Generate filenames server-side.
+
+Prevent stored HTML/SVG XSS.
+
+---
+
+# 48. CONTENT SANITIZATION
+
+All rich text must be sanitized.
+
+Do not allow arbitrary raw HTML from the CMS to become public.
+
+Markdown rendering must have a controlled feature set.
+
+Links supplied by the CMS must validate protocols.
+
+Allow:
+
+https
+http if deliberately supported
+mailto if appropriate
+
+Reject dangerous protocols such as:
+
+javascript:
+
+Sanitize image URLs and link targets.
+
+Use:
+
+rel="noopener noreferrer"
+
+for external links opening in new tabs.
+
+---
+
+# 49. PUBLIC SEO
+
+Implement proper metadata.
+
+Homepage:
+
+title
+description
+canonical URL
+Open Graph
+Twitter/X metadata where appropriate
+
+Posts:
+
+title
+description/excerpt
+publication date
+canonical URL
+Open Graph
+
+Projects and résumé:
+
+appropriate metadata
+
+Generate:
+
+sitemap.xml
+robots.txt
+
+Also generate an RSS feed for the notes/blog.
+
+The RSS feed should contain published posts only.
+
+---
+
+# 50. ACCESSIBILITY
+
+Target WCAG AA quality.
+
+Required:
+
+semantic headings
+keyboard navigation
+visible focus states
+appropriate color contrast
+dialog accessibility
+labels on CMS controls
+screen-reader text where appropriate
+reduced motion support
+alt text for uploaded images
+logical tab order
+skip-to-content link
+no interaction requiring only hover
+
+Project modals must be fully usable without a mouse.
+
+---
+
+# 51. PERFORMANCE
+
+Public site should be extremely fast.
+
+Goals:
+
+minimal JavaScript
+static HTML where possible
+lazy-loaded below-fold images
+optimized images
+no giant animation library unless absolutely necessary
+no unnecessary analytics scripts
+font loading optimized
+avoid layout shift
+
+Project interactions may use small client-side scripts/islands.
+
+Do not hydrate the entire site.
+
+---
+
+# 52. RESPONSIVE DESIGN
+
+The public site must be excellent at:
+
+mobile
+tablet
+desktop
+large desktop
+
+Do not simply shrink desktop cards.
+
+Writing should remain highly readable on small screens.
+
+Project modal should become a mobile full-height dialog/sheet where appropriate.
+
+Résumé timeline should collapse gracefully.
+
+Admin should be fully usable on desktop and tablet.
+
+Mobile CMS editing should function, although desktop editing may receive the most optimized experience.
+
+---
+
+# 53. MOTION SYSTEM
+
+Use motion sparingly.
+
+Public navigation:
+
+subtle
+
+Homepage:
+
+almost none
+
+Writing:
+
+almost none
+
+Résumé:
+
+almost none
+
+Projects:
+
+most expressive area
+
+Admin:
+
+Fluent-style professional transitions only
+
+Centralize timing/easing variables.
+
+Respect reduced motion globally.
+
+---
+
+# 54. DESIGN TOKENS
+
+Create explicit public-site design tokens for:
+
+colors
+spacing
+typography
+font sizes
+line heights
+radii
+shadows
+borders
+motion durations
+motion easing
+container widths
+breakpoints where necessary
+
+Do not scatter random pixel values everywhere.
+
+At the same time, do not create an overengineered enterprise design system.
+
+---
+
+# 55. PUBLIC COMPONENT GUIDELINES
+
+Likely components:
+
+SiteHeader
+SiteFooter
+HeroIntro
+LatestPost
+PostArchiveRow
+PostBody
+ProjectCard
+ProjectModal
+ResumeTimeline
+SocialLinks
+
+Do NOT create generic Card components and put every section inside them.
+
+Components should reflect semantic site concepts.
+
+---
+
+# 56. ADMIN COMPONENT GUIDELINES
+
+Use proper reusable application components.
+
+Likely:
+
+AdminShell
+SideNavigation
+CommandBar
+EditorRibbon
+SaveStatus
+PublishButton
+ConfirmDialog
+ProjectForm
+ResumeSectionEditor
+ImageUploader
+IconPicker
+DraftIndicator
+SecuritySessionBanner
+PreviewPane
+
+Use Fluent UI where it improves consistency.
+
+---
+
+# 57. CMS PREVIEW
+
+Provide a Preview action for:
+
+Posts
+Homepage
+Projects
+Résumé
+
+For posts, preview should use the same public prose styles or a shared representation close enough to be trustworthy.
+
+Do not require publishing just to see formatting.
+
+---
+
+# 58. CMS DESTRUCTIVE ACTIONS
+
+Require explicit confirmation for:
+
+Delete post
+Delete project
+Replace résumé PDF if destructive
+Discard unsaved draft
+Logout with unsaved changes if necessary
+
+Confirmation dialogs should identify the item.
+
+Example:
+
+Delete "Building this website"?
+
+This removes the draft and will remove it from the public site the next time the deletion is published.
+
+Cancel
+Delete
+
+Use red/destructive styling only where appropriate.
+
+---
+
+# 59. CMS USER EXPERIENCE DETAILS
+
+Implement professional details:
+
+* autosave debounce
+* keyboard shortcuts
+* undo/redo
+* clear save state
+* useful empty states
+* contextual validation messages
+* disabled publish when invalid
+* loading indicators only where necessary
+* toast notifications for meaningful completed actions
+* no page refresh for normal CMS operations
+
+The CMS should feel intentionally engineered.
+
+---
+
+# 60. ERROR HANDLING
+
+Public site:
+
+Because it is static, runtime failures should be minimal.
+
+Create a custom 404 page consistent with the site design.
+
+Admin:
+
+Provide clear user-friendly errors for:
+
+session expired
+network issue
+GitHub API failure
+publish conflict
+validation error
+file too large
+unsupported file
+Cloudflare limit/rate limit
+Turnstile failure
+
+Never leak stack traces or secrets.
+
+Server logs may contain error IDs.
+
+Display a correlation/error ID where helpful.
+
+---
+
+# 61. SECURITY HEADERS
+
+Worker-hosted admin should set strong headers.
+
+At minimum evaluate and configure:
+
+Content-Security-Policy
+X-Content-Type-Options: nosniff
+Referrer-Policy
+Permissions-Policy
+frame-ancestors through CSP
+Strict-Transport-Security where appropriate
+
+CSP should be restrictive.
+
+Allow Cloudflare Turnstile resources explicitly.
+
+Do not use broad:
+
+script-src *
+
+If Fluent styling requires style injection, accommodate that narrowly.
+
+Public site should also receive reasonable CSP/security metadata compatible with GitHub Pages limitations.
+
+---
+
+# 62. SOURCE MAPS
+
+Do not publicly deploy production admin source maps if they unnecessarily expose internal implementation.
+
+If source maps are needed for debugging, handle them intentionally.
+
+Regardless, security must NOT depend on hiding source code.
+
+No secrets may exist in bundles even if minified.
+
+---
+
+# 63. ADMIN CONFIGURATION / SECRETS
+
+Expected Worker secrets may include:
+
+ADMIN_PASSWORD_VERIFIER
+ADMIN_PASSWORD_SALT
+ADMIN_PASSWORD_PEPPER if architecture uses it
+SESSION_SECRET
+GITHUB_TOKEN
+TURNSTILE_SECRET_KEY
+
+Non-secret environment values may include:
+
+GITHUB_OWNER
+GITHUB_REPO
+GITHUB_BRANCH
+PUBLIC_SITE_URL
+TURNSTILE_SITE_KEY if appropriate
+SESSION_IDLE_MINUTES
+SESSION_ABSOLUTE_HOURS
+
+Do not treat public configuration as secret.
+
+---
+
+# 64. OPTIONAL TOTP 2FA READINESS
+
+Do not block initial launch on TOTP.
+
+However, structure authentication cleanly enough that TOTP-based two-factor authentication can be added later.
+
+If implementation is straightforward and does not destabilize launch, optional TOTP support may be built behind a disabled feature flag.
+
+Password + Turnstile + aggressive throttling remains required regardless.
+
+---
+
+# 65. MONOREPO
+
+Preferred:
+
+pnpm workspace
+
+Example:
+
+/
+apps/
+site/
+admin/
+packages/
+shared/
+.github/
+workflows/
+package.json
+pnpm-workspace.yaml
+README.md
+
+The exact file arrangement may be adjusted.
+
+Keep the architecture understandable.
+
+Do not create dozens of packages.
+
+---
+
+# 66. SHARED SCHEMAS
+
+Use Zod or equivalent runtime validation.
+
+Schemas should govern:
+
+Post
+Project
+Site Profile
+Résumé
+Draft Payload
+Publish Payload
+
+Use schemas on:
+
+admin forms
+Worker API boundaries
+content serialization
+Astro build-time content validation
+
+A malformed CMS payload should never create a broken public deploy.
+
+---
+
+# 67. CONTENT VALIDATION BEFORE PUBLISH
+
+Before committing anything:
+
+Validate required fields.
+
+Validate slug.
+
+Validate date.
+
+Validate URLs.
+
+Validate Markdown representation.
+
+Validate image references.
+
+Validate résumé data.
+
+Validate schema version.
+
+Reject invalid content before GitHub is touched.
+
+---
+
+# 68. PUBLISHING ATOMICITY
+
+Avoid leaving the public repository in a partially updated state.
+
+Where publishing includes multiple assets:
+
+upload/commit assets first
+
+then publish the content referencing those assets
+
+OR use a Git data commit strategy capable of grouping changes safely.
+
+Do not publish content pointing at assets that do not yet exist.
+
+If a complex atomic Git commit via Git Data API is clearly more robust and maintainable, prefer it.
+
+Do not overcomplicate simple single-file post publishes unnecessarily.
+
+---
+
+# 69. GIT COMMIT MESSAGES
+
+CMS commits should be human readable.
+
+Examples:
+
+cms: publish post "Building this website"
+
+cms: update homepage introduction
+
+cms: update project "Shiny Hunt Tracker"
+
+cms: update web resume
+
+cms: replace resume PDF
+
+Avoid:
+
+Update file
+Changes
+CMS update 47292
+
+Git history should itself be useful.
+
+---
+
+# 70. PUBLIC CONTENT HISTORY
+
+Git naturally provides published content history.
+
+Drafts remain in D1.
+
+Do not expose repository history to public visitors unless intentionally linked.
+
+Future CMS version-history functionality can leverage Git history.
+
+Structure publishing so that feature remains possible.
+
+---
+
+# 71. INITIAL CONTENT
+
+Create realistic starter content structures but avoid inventing biographical claims that were not provided.
+
+Use Brendon Busker as the name.
+
+For editable professional headline/intro, create polished placeholder copy that clearly indicates it should be customized if exact wording has not been provided.
+
+Do NOT invent employers, dates, education, or résumé claims.
+
+The résumé UI should use safe placeholder/demo data until real resume data is entered.
+
+Clearly isolate seed data.
+
+---
+
+# 72. PROJECT SEEDING
+
+Create the system ready for existing GitHub Pages applications.
+
+Do not invent fake projects as though they are real.
+
+Use explicit demo/placeholder project entries during development if necessary.
+
+They must be easy to remove.
+
+The CMS should make adding the actual existing projects straightforward.
+
+---
+
+# 73. ADMIN DESIGN: MICROSOFT INSPIRATION DETAILS
+
+This matters substantially.
+
+The user specifically wants the editor to feel as though Microsoft itself designed it.
+
+Use:
+
+Segoe UI/system UI stack
+Fluent UI
+Fluent icons
+subtle neutral surfaces
+professional command bars
+precise spacing
+clear information hierarchy
+Word-like editor toolbar
+familiar dropdowns
+split buttons where appropriate
+side navigation
+clean dialogs
+context menus where valuable
+professional tooltips
+high-quality keyboard navigation
+
+Avoid turning "Microsoft-inspired" into:
+
+blue everywhere
+Windows logos
+fake Office branding
+literal duplication of Word chrome
+
+It should feel like a modern Fluent productivity application tailored to this website.
+
+---
+
+# 74. PUBLIC VS ADMIN PERSONALITY
+
+This contrast is intentional.
+
+PUBLIC SITE:
+
+editorial
+personal
+typographic
+warm
+human
+minimal UI chrome
+
+ADMIN:
+
+productive
+structured
+Microsoft-inspired
+tool-rich
+efficient
+application-like
+
+Do not force them into the same visual system.
+
+---
+
+# 75. TESTING
+
+Set up automated testing.
+
+## Unit tests
+
+At minimum cover:
+
+schema validation
+slug generation
+Markdown serialization
+URL validation
+content sanitization
+auth verification
+session creation
+session expiry
+CSRF validation
+repository path validation
+
+## Worker integration tests
+
+Test:
+
+valid login
+invalid login
+rate-limited login
+Turnstile rejection
+expired session
+missing session
+logout
+CSRF failure
+bad Origin
+malicious publish payload
+path traversal attempt
+invalid image
+GitHub API failure
+
+## Public-site tests
+
+Test:
+
+homepage renders
+latest post appears
+archive ordering
+post routes
+project page
+project modal
+query-based project deep link
+resume page
+resume download link
+404
+
+## Browser / Playwright
+
+Use Playwright.
+
+Test:
+
+keyboard navigation
+project modal focus trap
+ESC close
+browser Back after project modal
+admin login
+editor toolbar
+draft autosave
+publish workflow with mocked backend/GitHub
+responsive navigation
+
+---
+
+# 76. SECURITY TESTS
+
+Explicitly verify:
+
+Admin password is not present in frontend build output.
+
+GitHub token is not present in frontend build output.
+
+Secrets are not logged.
+
+No auth token enters localStorage.
+
+Session cookie is HttpOnly.
+
+Session cookie is Secure.
+
+Session cookie is SameSite=Strict.
+
+Cross-origin mutation requests fail.
+
+CSRF failures are rejected.
+
+Raw HTML cannot create stored XSS.
+
+javascript: links are rejected.
+
+Path traversal is rejected.
+
+Rate limiter runs before expensive password verification.
+
+Unsupported upload formats are rejected.
+
+Arbitrary SVG cannot create script execution.
+
+---
+
+# 77. PERFORMANCE TESTING
+
+Run Lighthouse or equivalent against production public build.
+
+Pay attention to:
+
+Performance
+Accessibility
+Best Practices
+SEO
+
+Do not chase a meaningless 100 score by harming design, but obvious performance regressions should be fixed.
+
+Aim for excellent Core Web Vitals.
+
+---
+
+# 78. BROWSER SUPPORT
+
+Target current evergreen browsers:
+
+Chrome
+Edge
+Firefox
+Safari
+
+Progressive enhancement is encouraged.
+
+Do not make a core experience rely exclusively on an experimental browser API.
+
+---
+
+# 79. GITHUB ACTIONS
+
+Public site workflow:
+
+Push to main
+↓
+install
+↓
+validate content
+↓
+test/build
+↓
+Astro static build
+↓
+GitHub Pages deploy
+
+Use the official Astro/Pages deployment path.
+
+Workflow permissions should follow least privilege.
+
+The public build should not need the GitHub CMS token.
+
+---
+
+# 80. CLOUDFLARE DEPLOYMENT
+
+Use Wrangler.
+
+Admin/Worker deployment should include:
+
+Worker code
+admin static assets
+D1 binding
+rate limiter bindings
+required non-secret vars
+
+Secrets must be entered separately.
+
+Avoid requiring a paid Cloudflare feature.
+
+Do not add R2 unless there is a demonstrated need.
+
+Media and résumé files are published to GitHub instead.
+
+---
+
+# 81. SETUP EXPERIENCE
+
+Create an excellent README.
+
+Document initial setup in a precise sequence.
+
+Codex should automate as much as possible.
+
+Ideal initial setup:
+
+1. Install dependencies.
+2. Build and test public site.
+3. Configure GitHub Pages.
+4. Run `wrangler login`.
+5. User authorizes Cloudflare.
+6. Create D1 database/migrations.
+7. Configure Worker.
+8. Configure rate-limit bindings.
+9. Create/configure Turnstile widget.
+10. Create repository-scoped fine-grained GitHub PAT.
+11. Store GitHub PAT via Wrangler Secret.
+12. User securely initializes admin password.
+13. Generate session secret.
+14. Deploy admin Worker.
+15. Confirm `/admin/` redirects correctly.
+16. Test login.
+17. Test draft.
+18. Test publish.
+19. Confirm GitHub Pages rebuild.
+20. Verify final public page.
+
+Automate steps where safely possible.
+
+---
+
+# 82. SECRET INITIALIZATION
+
+Create helper scripts.
+
+Examples:
+
+pnpm setup:admin-password
+
+pnpm setup:session-secret
+
+The password script must:
+
+prompt interactively
+hide entered characters
+confirm password
+enforce strength
+generate verifier
+never print plaintext
+never write plaintext to disk
+
+Where practical, pipe the resulting secret directly into Wrangler.
+
+If manual copy/paste of a verifier is necessary, that is acceptable.
+
+Never require plaintext password in `.env.production`.
+
+---
+
+# 83. LOCAL DEVELOPMENT
+
+Provide a clean local workflow.
+
+Something approximately like:
+
+pnpm dev
+
+should run the necessary development services.
+
+If running both Astro and Worker simultaneously, document ports.
+
+Use `.dev.vars` for local Worker secrets.
+
+Ensure:
+
+.dev.vars
+.env
+other secret files
+
+are in `.gitignore`.
+
+Provide:
+
+.dev.vars.example
+
+with NAMES ONLY / safe placeholders.
+
+---
+
+# 84. DOCUMENTATION
+
+README must explain:
+
+Architecture
+Public site
+Admin site
+Why `/admin` redirects
+Why content is statically published
+How authentication works at a high level
+How to change admin password
+How to add a project
+How to create a post
+How to update résumé
+How publishing works
+How to deploy public site
+How to deploy admin Worker
+How to rotate GitHub token
+How to rotate session secret
+How to restore from Git history
+How to run tests
+How to run locally
+
+Do NOT include actual secrets in documentation.
+
+---
+
+# 85. CODE QUALITY
+
+Use:
+
+TypeScript strict mode
+ESLint
+Prettier or equivalent formatting
+clear module boundaries
+small understandable functions
+shared schema validation
+meaningful naming
+
+Do not overengineer.
+
+Avoid giant 1000-line components.
+
+Avoid premature abstractions.
+
+Avoid unused dependencies.
+
+---
+
+# 86. DEPENDENCY POLICY
+
+Prefer mature, actively maintained packages.
+
+Minimize dependency count on the public site.
+
+Admin may use:
+
+React
+Fluent UI
+Tiptap
+Zod
+Hono
+
+Do not pull in a library for something that can be implemented cleanly in 15 lines of platform code.
+
+Run dependency/security audit before completion.
+
+---
+
+# 87. PROJECT MODAL DEEP LINKING
+
+Implement this carefully.
+
+Behavior example:
+
+User navigates to:
+
+/projects/
+
+Clicks project A.
+
+URL becomes:
+
+/projects/?project=project-a
+
+Modal opens.
+
+User presses browser Back.
+
+Modal closes.
+
+User loads:
+
+/projects/?project=project-a
+
+directly.
+
+Page loads with project A modal open.
+
+User closes modal.
+
+URL returns to:
+
+/projects/
+
+Do not break scroll position.
+
+---
+
+# 88. WRITING ARCHIVE SCALABILITY
+
+Design now for a long-running site.
+
+The archive should remain usable after:
+
+10 posts
+50 posts
+200 posts
+500 posts
+
+Group by year.
+
+Potential future support:
+
+tags
+search
+
+Do not require those for v1.
+
+Do not make architecture prevent them.
+
+---
+
+# 89. POST TITLES
+
+Every published post must have:
+
+date
+title
+
+Titles are required.
+
+Excerpt may be automatically generated or manually overridden.
+
+Slug can be generated from title but editable before first publish.
+
+After first publish, warn strongly before changing slug because permanent URLs may break.
+
+Prefer redirect support if slug-changing is eventually implemented.
+
+---
+
+# 90. DATE HANDLING
+
+Store published timestamps in a reliable ISO representation.
+
+Render dates in a human style:
+
+August 31, 2026
+
+Avoid timezone bugs where a post dated August 31 appears as August 30.
+
+The CMS should explicitly handle Brendon's local publishing timezone rather than accidentally relying on UTC date conversion.
+
+Make timezone configurable in Site Settings.
+
+Initial intended timezone:
+
+America/Chicago
+
+---
+
+# 91. SITE SETTINGS
+
+CMS Settings should support harmless configuration such as:
+
+site title
+site description
+timezone
+social links
+default Open Graph image if eventually added
+GitHub username/public profile URL
+LinkedIn URL if added
+contact link
+
+Sensitive backend secrets should NOT be editable through ordinary CMS settings.
+
+Secret rotation remains a deployment/configuration operation.
+
+---
+
+# 92. CONTACT / PRIVACY
+
+Do not automatically expose private contact data.
+
+If an email address is eventually entered into the CMS, make its publication explicit.
+
+Do not include telemetry collecting personal visitor information unless intentionally enabled later.
+
+No analytics platform is required for v1.
+
+---
+
+# 93. 404 PAGE
+
+Create a genuinely designed 404.
+
+Keep it simple.
+
+Use the same public typography.
+
+Example direction:
+
+404
+
+Nothing here yet.
+
+Return home →
+
+Do not use a generic framework 404.
+
+---
+
+# 94. LOADING STATES
+
+Public site should barely need loading states because content is static.
+
+Project images may fade in subtly if useful.
+
+Admin uses proper skeletons/spinners only where asynchronous work occurs.
+
+Do not cover the entire admin screen with spinners during small operations.
+
+---
+
+# 95. EMPTY STATES
+
+Create good CMS empty states.
+
+Example Posts:
+
+No posts yet.
+
+Start the archive with your first entry.
+
+[ New post ]
+
+Projects:
+
+No projects added yet.
+
+[ Add project ]
+
+Keep language professional and human.
+
+---
+
+# 96. PUBLIC COPY STYLE
+
+Avoid marketing language.
+
+Use first-person personal-site language.
+
+The site should sound like Brendon wrote it.
+
+Do not generate over-polished corporate fluff.
+
+CMS content will eventually replace seed copy.
+
+---
+
+# 97. NO COMMENTS / USER ACCOUNTS
+
+Do not build:
+
+comments
+likes
+visitor accounts
+newsletter subscriptions
+user registration
+public CMS API
+social feed
+public database editing
+
+This is intentionally a personal publishing website.
+
+---
+
+# 98. NO BACKEND DEPENDENCY FOR PROJECT APPS
+
+Existing projects will generally be hosted separately through GitHub Pages.
+
+This homepage links to them.
+
+Do not merge each existing project application into this repository.
+
+The portfolio is the hub.
+
+Project Live URL may point to:
+
+https://USERNAME.github.io/project-name/
+
+---
+
+# 99. SUCCESSFUL END STATE
+
+When complete, Brendon should be able to:
+
+Visit:
+
+USERNAME.github.io
+
+and see a genuine personal website with:
+
+* strong personal introduction
+* professional identity
+* latest writing
+* historical writing archive
+* polished project showcase
+* interactive project detail modals
+* thoughtfully designed web résumé
+* downloadable current PDF
+
+He should then be able to visit:
+
+USERNAME.github.io/admin/
+
+be redirected to the secure CMS,
+
+log in with his private credentials,
+
+create a new post,
+
+format it using a Microsoft-Word-inspired editor,
+
+save it as a draft,
+
+preview it,
+
+publish it,
+
+and have the Worker safely commit the new post into GitHub.
+
+GitHub Actions should then rebuild the Astro site.
+
+A permanent dated page should appear.
+
+The homepage should show the new entry.
+
+The archive should include it.
+
+The entire public site should remain available even if Cloudflare admin functionality is unavailable.
+
+---
+
+# 100. VISUAL ACCEPTANCE CRITERIA
+
+Before considering the public site complete, explicitly evaluate whether it looks "AI/vibe coded."
+
+If the answer is yes, redesign it.
+
+Questions to ask:
+
+Does every section live in a rounded card?
+
+If yes: fix it.
+
+Does the homepage look like a SaaS landing page?
+
+If yes: fix it.
+
+Are there pointless gradients?
+
+If yes: remove them.
+
+Are there pills everywhere?
+
+If yes: simplify them.
+
+Is animation being used because animation exists rather than because it improves interaction?
+
+If yes: remove it.
+
+Could this homepage have been generated from a generic "developer portfolio" prompt?
+
+If yes: make it more distinctive.
+
+Does the writing feel like editorial content?
+
+It should.
+
+Does the résumé feel like an intentionally designed document?
+
+It should.
+
+Do project cards feel playful without taking over the whole design?
+
+They should.
+
+Does the site feel like someone's actual personal corner of the internet?
+
+It must.
+
+---
+
+# 101. ADMIN ACCEPTANCE CRITERIA
+
+The admin application should make a user think:
+
+"This feels like a small Microsoft productivity application."
+
+Not:
+
+"This looks like the public portfolio with forms added."
+
+Evaluate:
+
+Are toolbar groups clear?
+
+Are icons consistent?
+
+Does the editor behave predictably?
+
+Are keyboard shortcuts natural?
+
+Are status messages subtle?
+
+Are forms properly spaced?
+
+Are dialogs professional?
+
+Do save/publish actions have clear state?
+
+Is destructive behavior clearly separated?
+
+Does the rich text editor feel genuinely useful rather than like a basic textarea with five icons?
+
+If not, refine it.
+
+---
+
+# 102. SECURITY ACCEPTANCE CRITERIA
+
+Do not consider deployment finished until all are true:
+
+* No plaintext admin password exists in repository.
+* No plaintext admin password exists in frontend build.
+* No GitHub token exists in frontend.
+* No GitHub token exists in repository.
+* GitHub token is repository-scoped and least-privilege.
+* Admin frontend and API share the Cloudflare origin.
+* Session uses HttpOnly secure cookie.
+* No auth token is stored in localStorage.
+* Rate limiting is enabled.
+* Turnstile is enabled.
+* Password verification occurs server-side.
+* Password verification happens only after abuse checks.
+* No account registration exists.
+* CSRF/origin protections work.
+* Content is sanitized.
+* Upload paths are server generated.
+* Arbitrary repository paths cannot be written.
+* Worker cannot modify workflow files through application routes.
+* Public website does not depend on Worker availability.
+* Free-tier exhaustion cannot create automatic application-level spending behavior.
+
+---
+
+# 103. BUILD ORDER
+
+Implement in this general order:
+
+PHASE 1
+Repository/workspace architecture
+Astro public shell
+Design tokens
+Typography
+Header/footer
+
+PHASE 2
+Homepage introduction
+Notes system
+Static post generation
+Archive
+Individual post design
+
+PHASE 3
+Projects gallery
+Hover interactions
+Project modal
+Deep linking
+
+PHASE 4
+Web résumé
+Structured résumé data
+PDF download
+
+PHASE 5
+Admin React application
+Fluent shell
+Forms/navigation
+
+PHASE 6
+Word-inspired Tiptap post editor
+Draft management
+
+PHASE 7
+Cloudflare Worker
+D1
+Sessions
+Authentication
+Turnstile
+Rate limiting
+
+PHASE 8
+GitHub publishing
+asset publishing
+post publishing
+project publishing
+homepage publishing
+résumé publishing
+
+PHASE 9
+Preview systems
+polish
+mobile behavior
+accessibility
+
+PHASE 10
+Tests
+security review
+performance review
+documentation
+deployment
+
+Do not implement insecure temporary authentication merely to move faster.
+
+---
+
+# 104. CODEX EXECUTION BEHAVIOR
+
+You are expected to actually build this system.
+
+Do not respond only with another architecture proposal.
+
+Use this document as the product specification.
+
+Create files.
+
+Install packages.
+
+Implement features.
+
+Run builds.
+
+Run tests.
+
+Fix failures.
+
+Inspect output.
+
+Iterate on the design.
+
+When external authorization is genuinely required, such as:
+
+Cloudflare account authorization
+GitHub token creation
+secret entry
+
+clearly tell the user exactly what they must do and why.
+
+Do not ask the user to perform development work Codex can perform itself.
+
+Do not ask unnecessary design questions already resolved by this specification.
+
+If an implementation detail is unclear, choose the solution most consistent with:
+
+security
+simplicity
+GitHub Pages compatibility
+free-tier operation
+editorial public design
+Microsoft-quality admin UX
+
+---
+
+# 105. FINAL DELIVERABLES
+
+The completed repository should contain:
+
+Public Astro website
+Admin React application
+Cloudflare Worker
+D1 migrations
+shared schemas
+GitHub Pages deployment workflow
+content system
+project modal system
+web résumé
+PDF management
+secure authentication
+rate limiting
+Turnstile
+GitHub publishing
+tests
+README
+setup tooling
+production configuration templates
+
+Also produce at completion:
+
+1. concise architecture summary
+2. exact deployment steps
+3. exact user-required Cloudflare steps
+4. exact user-required GitHub token steps
+5. security checklist with pass/fail status
+6. test results
+7. known limitations
+8. sensible future enhancement list
+
+Do not mark the project complete while core requirements remain stubbed.
+
+---
+
+# 106. FINAL PRODUCT PRINCIPLE
+
+The public website is not a dashboard.
+
+It is not a template.
+
+It is not a collection of widgets.
+
+It is Brendon Busker's personal place on the web.
+
+The writing should make it feel alive over time.
+
+The project gallery should make exploring his work enjoyable.
+
+The résumé should make his professional background easy to understand without looking like an embedded document.
+
+The CMS should make maintaining all of this feel effortless and professional.
+
+Build the site so that it still feels good after years of posts and projects have accumulated.
+
+Prioritize durability, security, personality, and deliberate design over novelty.

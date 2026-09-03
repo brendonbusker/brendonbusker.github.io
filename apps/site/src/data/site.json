@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "fullName": "Brendon Busker",
+  "professionalHeadline": "Technical consultant, systems thinker, and hands-on builder.",
+  "intro": "I work where business operations, data, and software meet—turning complicated requirements into systems people can rely on.",
+  "secondaryIntro": "This is my place to keep track of what I’m building, what I’m learning, and the ideas that are still taking shape.",
+  "socialLinks": [
+    { "label": "GitHub", "url": "https://github.com/brendonbusker" },
+    { "label": "LinkedIn", "url": "https://www.linkedin.com/in/brendonbusker/" }
+  ],
+  "siteTitle": "Brendon Busker",
+  "siteDescription": "The personal website, writing archive, projects, and résumé of Brendon Busker.",
+  "timezone": "America/Chicago",
+  "adminUrl": "https://personal-site-admin.brendonbusker.workers.dev/"
+}

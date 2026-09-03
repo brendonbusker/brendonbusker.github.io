@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "personal-site-admin",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-31",
+  "assets": { "directory": "./dist", "binding": "ASSETS", "run_worker_first": true },
+  "d1_databases": [{ "binding": "DB", "database_name": "personal-site-cms", "database_id": "3b8faabb-86f6-446a-b989-49e0e69a9403", "migrations_dir": "migrations" }],
+  "ratelimits": [
+    { "name": "LOGIN_RATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } },
+    { "name": "GLOBAL_LOGIN_RATE_LIMITER", "namespace_id": "1002", "simple": { "limit": 25, "period": 60 } }
+  ],
+  "vars": {
+    "ADMIN_ORIGIN": "https://personal-site-admin.brendonbusker.workers.dev",
+    "PUBLIC_SITE_URL": "https://brendonbusker.github.io",
+    "GITHUB_OWNER": "brendonbusker",
+    "GITHUB_REPO": "brendonbusker.github.io",
+    "GITHUB_BRANCH": "main",
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAElhLU1V_Rezl73J",
+    "SESSION_IDLE_MINUTES": "45",
+    "SESSION_ABSOLUTE_HOURS": "8",
+    "PBKDF2_ITERATIONS": "100000"
+  }
+}

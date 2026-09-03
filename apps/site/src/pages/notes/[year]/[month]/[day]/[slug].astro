@@ -1,0 +1,15 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../../../../layouts/BaseLayout.astro';
+export async function getStaticPaths() {
+  const posts = (await getCollection('posts', ({data}) => data.status === 'published')).sort((a,b)=>+a.data.publishedAt-+b.data.publishedAt);
+  return posts.map((post,index) => { const d=post.data.publishedAt; const p=(e:typeof post|undefined)=>e?`/notes/${e.data.publishedAt.getUTCFullYear()}/${String(e.data.publishedAt.getUTCMonth()+1).padStart(2,'0')}/${String(e.data.publishedAt.getUTCDate()).padStart(2,'0')}/${e.data.slug}/`:undefined; return { params:{year:String(d.getUTCFullYear()),month:String(d.getUTCMonth()+1).padStart(2,'0'),day:String(d.getUTCDate()).padStart(2,'0'),slug:post.data.slug}, props:{post,previous:posts[index-1],next:posts[index+1],previousUrl:p(posts[index-1]),nextUrl:p(posts[index+1])} }; });
+}
+const { post, previous, next, previousUrl, nextUrl } = Astro.props;
+const { Content } = await render(post);
+const date = post.data.publishedAt.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric',timeZone:'UTC'});
+---
+<BaseLayout title={`${post.data.title} — Brendon Busker`} description={post.data.excerpt} article>
+  <article class="post"><header><p class="eyebrow"><a href="/notes/">Notes</a> / <time datetime={post.data.publishedAt.toISOString()}>{date}</time></p><h1>{post.data.title}</h1>{post.data.excerpt && <p class="dek">{post.data.excerpt}</p>}</header><div class="prose"><Content /></div></article>
+  <nav class="post-nav" aria-label="Adjacent posts"><div>{previous && <><span>Previous</span><a href={previousUrl}>{previous.data.title}</a></>}</div><div>{next && <><span>Next</span><a href={nextUrl}>{next.data.title}</a></>}</div></nav>
+</BaseLayout>

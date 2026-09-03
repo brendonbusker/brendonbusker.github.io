@@ -1,0 +1,32 @@
+{
+  "name": "brendon-busker-personal-site",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "dev": "concurrently -n site,admin,worker -c blue,magenta,cyan \"pnpm --filter @brendon/site dev\" \"pnpm --filter @brendon/admin dev\" \"pnpm --filter @brendon/admin worker:dev\"",
+    "build": "pnpm -r --if-present build",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:watch": "vitest",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "setup:admin-password": "tsx scripts/setup-admin-password.ts",
+    "setup:session-secret": "tsx scripts/setup-session-secret.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.34.0",
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^24.3.0",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.0.0",
+    "eslint": "^9.34.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.41.0",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,11 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+const posts = (await getCollection('posts', ({ data }) => data.status === 'published')).sort((a,b) => +b.data.publishedAt - +a.data.publishedAt);
+const groups = Object.groupBy(posts, (post) => String(post.data.publishedAt.getUTCFullYear()));
+const urlFor = (post: typeof posts[number]) => { const d=post.data.publishedAt; return `/notes/${d.getUTCFullYear()}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${String(d.getUTCDate()).padStart(2,'0')}/${post.data.slug}/`; };
+---
+<BaseLayout title="Notes — Brendon Busker" description="Dated notes on what Brendon Busker is building, learning, and thinking about.">
+  <header class="page-intro"><p class="eyebrow">Writing archive</p><h1>Notes along the way.</h1><p>A dated record of projects, experiments, and ideas while they are still in motion.</p></header>
+  <div class="archive">{Object.entries(groups).sort(([a],[b]) => +b-+a).map(([year, yearPosts]) => <section aria-labelledby={`year-${year}`}><h2 id={`year-${year}`}>{year}</h2><div>{yearPosts!.map((post) => <article class="archive-row"><time datetime={post.data.publishedAt.toISOString().slice(0,10)}><a href={urlFor(post)}>{post.data.publishedAt.toLocaleDateString('en-US',{month:'long',day:'2-digit',timeZone:'UTC'})}</a></time><h3><a href={urlFor(post)}>{post.data.title}</a></h3><p>{post.data.excerpt}</p></article>)}</div></section>)}</div>
+</BaseLayout>

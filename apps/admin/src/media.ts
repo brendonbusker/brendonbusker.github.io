@@ -1,0 +1,3 @@
+export async function optimizeImage(file:File,maxDimension=2000){
+  const bitmap=await createImageBitmap(file);const scale=Math.min(1,maxDimension/Math.max(bitmap.width,bitmap.height));const canvas=document.createElement('canvas');canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);const context=canvas.getContext('2d');if(!context)throw new Error('Image processing is unavailable.');context.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('Image conversion failed.')),'image/webp',.84));return new File([blob],file.name.replace(/\.[^.]+$/,'.webp'),{type:'image/webp'})
+}

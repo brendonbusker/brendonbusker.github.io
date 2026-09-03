@@ -1,0 +1,10 @@
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD_VERIFIER=base64-pbkdf2-verifier
+ADMIN_PASSWORD_SALT=base64-random-salt
+ADMIN_PASSWORD_PEPPER=base64-random-pepper
+SESSION_SECRET=base64-random-session-secret
+IP_HASH_SECRET=base64-random-ip-hash-secret
+GITHUB_TOKEN=github_pat_repository_scoped_token
+TURNSTILE_SECRET_KEY=turnstile-secret-key
+ADMIN_ORIGIN=http://127.0.0.1:5173
+TURNSTILE_SITE_KEY=1x00000000000000000000AA

@@ -1,0 +1,3 @@
+import rss from '@astrojs/rss';
+import { getCollection } from 'astro:content';
+export async function GET(context){const posts=(await getCollection('posts',({data})=>data.status==='published')).sort((a,b)=>+b.data.publishedAt-+a.data.publishedAt);return rss({title:'Notes — Brendon Busker',description:'Notes on projects, experiments, and ideas.',site:context.site,items:posts.map(post=>({title:post.data.title,pubDate:post.data.publishedAt,description:post.data.excerpt,link:`/notes/${post.data.publishedAt.getUTCFullYear()}/${String(post.data.publishedAt.getUTCMonth()+1).padStart(2,'0')}/${String(post.data.publishedAt.getUTCDate()).padStart(2,'0')}/${post.data.slug}/`}))});}

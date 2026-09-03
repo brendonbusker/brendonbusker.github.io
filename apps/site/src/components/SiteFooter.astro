@@ -1,0 +1,7 @@
+---
+import site from '../data/site.json';
+---
+<footer class="site-footer">
+  <p>© {new Date().getFullYear()} {site.fullName}</p>
+  <nav aria-label="Footer links">{site.socialLinks.map((link) => <a href={link.url} rel="me noreferrer">{link.label}</a>)}</nav>
+</footer>
