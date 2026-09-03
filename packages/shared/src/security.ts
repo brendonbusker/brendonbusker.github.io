@@ -1,7 +1,7 @@
 const SAFE_REPO_PATHS = [
   /^apps\/site\/src\/content\/posts\/[a-z0-9-]+\.md$/,
   /^apps\/site\/src\/content\/projects\/[a-z0-9-]+\.md$/,
-  /^apps\/site\/src\/data\/(site|resume)\.json$/,
+  /^apps\/site\/src\/data\/(site|resume|appearance)\.json$/,
   /^apps\/site\/public\/uploads\/(posts|projects)\/[a-z0-9-]+\/[a-z0-9-]+\.(?:jpe?g|png|webp|avif)$/,
   /^apps\/site\/public\/resume\/Brendon-Busker-Resume\.pdf$/,
   /^apps\/site\/public\/content-version\.json$/

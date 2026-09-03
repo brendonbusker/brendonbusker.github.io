@@ -90,6 +90,9 @@ describe("repository paths", () => {
         "apps/site/public/resume/Brendon-Busker-Resume.pdf",
       ),
     ).toBe(true);
+    expect(
+      isAllowedRepositoryPath("apps/site/src/data/appearance.json"),
+    ).toBe(true);
     expect(isAllowedRepositoryPath(".github/workflows/pages.yml")).toBe(false);
     expect(
       isAllowedRepositoryPath("apps/site/src/content/posts/../config.md"),
