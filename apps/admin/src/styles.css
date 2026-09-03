@@ -351,10 +351,6 @@ select {
 .three-fields {
   grid-template-columns: 1fr 1fr 1fr;
 }
-.ribbon-tabs {
-  padding: 0 16px;
-  background: #fff;
-}
 .editor-ribbon {
   display: flex;
   align-items: stretch;
@@ -401,6 +397,15 @@ select {
 }
 .paragraph-group {
   min-width: 390px;
+}
+.insert-group {
+  min-width: 150px;
+}
+.image-layout-group {
+  min-width: 170px;
+}
+.image-layout-group select {
+  width: 150px;
 }
 .ribbon-control-stack {
   display: grid;
@@ -449,6 +454,7 @@ select {
 }
 .document-surface,
 .preview-canvas article {
+  position: relative;
   width: min(100%, 800px);
   min-height: 900px;
   margin: auto;
@@ -460,6 +466,14 @@ select {
     16px/1.65 Georgia,
     serif;
 }
+.document-surface {
+  isolation: isolate;
+}
+.document-surface::after {
+  display: block;
+  clear: both;
+  content: "";
+}
 .document-surface h1,
 .document-surface h2,
 .document-surface h3 {
@@ -468,7 +482,23 @@ select {
 .document-surface table {
   border-collapse: collapse;
 }
-.document-surface img,
+.document-surface img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0;
+  border-radius: 3px;
+  cursor: grab;
+}
+.preview-prose {
+  position: relative;
+  isolation: isolate;
+}
+.preview-prose::after {
+  display: block;
+  clear: both;
+  content: "";
+}
 .preview-prose img {
   display: block;
   max-width: 100%;
@@ -476,8 +506,18 @@ select {
   margin: 1.5rem auto;
   border-radius: 3px;
 }
-.document-surface img {
-  cursor: grab;
+.document-surface p,
+.document-surface h1,
+.document-surface h2,
+.document-surface h3,
+.document-surface ul,
+.document-surface ol,
+.document-surface blockquote,
+.document-surface pre,
+.document-surface table,
+.preview-prose > :not(img) {
+  position: relative;
+  z-index: 1;
 }
 .document-surface img.ProseMirror-selectednode,
 .document-surface [data-resize-container].ProseMirror-selectednode img {
@@ -488,6 +528,83 @@ select {
   display: table;
   max-width: 100%;
   margin: 1.5rem auto;
+}
+.document-surface [data-resize-container]:has(img[data-layout="inline"]) {
+  display: inline-table;
+  margin: 0 0.35rem;
+  vertical-align: middle;
+}
+.document-surface [data-resize-container]:has(img[data-layout="full"]) {
+  display: block;
+  width: 100% !important;
+}
+.document-surface [data-resize-container]:has(img[data-layout="full"]) img {
+  width: 100% !important;
+}
+.document-surface [data-resize-container]:has(img[data-layout="left"]),
+.document-surface [data-resize-container]:has(img[data-layout="right"]) {
+  display: table;
+  max-width: 48%;
+  margin-top: 0.35rem;
+  margin-bottom: 1rem;
+}
+.document-surface [data-resize-container]:has(img[data-layout="left"]) {
+  float: left;
+  margin-right: 1.4rem;
+  margin-left: 0;
+}
+.document-surface [data-resize-container]:has(img[data-layout="right"]) {
+  float: right;
+  margin-right: 0;
+  margin-left: 1.4rem;
+}
+.document-surface [data-resize-container]:has(img[data-layout="behind"]),
+.document-surface [data-resize-container]:has(img[data-layout="front"]) {
+  position: absolute;
+  margin: 0;
+}
+.document-surface [data-resize-container]:has(img[data-layout="behind"]) {
+  z-index: 0;
+  opacity: 0.38;
+}
+.document-surface [data-resize-container]:has(img[data-layout="front"]) {
+  z-index: 3;
+}
+.preview-prose img[data-layout="inline"] {
+  display: inline-block;
+  margin: 0 0.35rem;
+  vertical-align: middle;
+}
+.preview-prose img[data-layout="full"] {
+  width: 100%;
+}
+.preview-prose img[data-layout="left"],
+.preview-prose img[data-layout="right"] {
+  max-width: 48%;
+  margin-top: 0.35rem;
+  margin-bottom: 1rem;
+}
+.preview-prose img[data-layout="left"] {
+  float: left;
+  margin-right: 1.4rem;
+  margin-left: 0;
+}
+.preview-prose img[data-layout="right"] {
+  float: right;
+  margin-right: 0;
+  margin-left: 1.4rem;
+}
+.preview-prose img[data-layout="behind"],
+.preview-prose img[data-layout="front"] {
+  position: absolute;
+  margin: 0;
+}
+.preview-prose img[data-layout="behind"] {
+  z-index: 0;
+  opacity: 0.38;
+}
+.preview-prose img[data-layout="front"] {
+  z-index: 3;
 }
 .document-surface [data-resize-wrapper] {
   position: relative;

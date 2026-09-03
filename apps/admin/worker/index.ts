@@ -504,7 +504,7 @@ export function sanitizePostBody(body: string) {
     allowedAttributes: {
       "*": ["style"],
       a: ["href", "title", "target", "rel"],
-      img: ["src", "alt", "title", "width", "height"],
+      img: ["src", "alt", "title", "width", "height", "data-layout"],
       table: ["class"],
       th: ["colspan", "rowspan", "colwidth"],
       td: ["colspan", "rowspan", "colwidth"],
@@ -531,6 +531,24 @@ export function sanitizePostBody(body: string) {
         tagName: "a",
         attribs: { ...attribs, rel: "noopener noreferrer" },
       }),
+      img: (_tagName, attribs) => {
+        const requestedLayout = attribs["data-layout"] || "";
+        const layout = [
+          "inline",
+          "block",
+          "full",
+          "left",
+          "right",
+          "behind",
+          "front",
+        ].includes(requestedLayout)
+          ? requestedLayout
+          : "block";
+        return {
+          tagName: "img",
+          attribs: { ...attribs, "data-layout": layout },
+        };
+      },
     },
   }).trim();
 }

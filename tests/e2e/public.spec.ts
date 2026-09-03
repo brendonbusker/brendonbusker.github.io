@@ -8,12 +8,7 @@ test("homepage, archive, post, projects, resume, and 404 render", async ({
   ).toBeVisible();
   await page.goto("http://127.0.0.1:4321/blog/");
   await expect(page.getByRole("heading", { name: "2026" })).toBeVisible();
-  await page
-    .getByRole("link", {
-      name: "Building a place for the work between projects",
-    })
-    .first()
-    .click();
+  await page.locator(".archive-row h3 a").first().click();
   await expect(page.locator("article.post")).toBeVisible();
   await page.goto("http://127.0.0.1:4321/resume/");
   await expect(

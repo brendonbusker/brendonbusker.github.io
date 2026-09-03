@@ -3,8 +3,6 @@ import {
   Button,
   Field,
   Input,
-  Tab,
-  TabList,
   Textarea,
   Toolbar,
   ToolbarButton,
@@ -79,6 +77,23 @@ import { SaveStatus } from "./SaveStatus";
 
 const PUBLIC_SITE_URL = "https://brendonbusker.github.io";
 const FONT_SIZES = [10, 11, 12, 14, 16, 18, 24, 32, 48];
+const IMAGE_LAYOUTS = [
+  "inline",
+  "block",
+  "full",
+  "left",
+  "right",
+  "behind",
+  "front",
+] as const;
+type ImageLayout = (typeof IMAGE_LAYOUTS)[number];
+
+function imageLayout(value: unknown): ImageLayout {
+  return IMAGE_LAYOUTS.includes(value as ImageLayout)
+    ? (value as ImageLayout)
+    : "block";
+}
+
 const CmsImage = Image.extend({
   addAttributes() {
     return {
@@ -90,6 +105,14 @@ const CmsImage = Image.extend({
           attributes.cmsPath
             ? { "data-cms-path": String(attributes.cmsPath) }
             : {},
+      },
+      layout: {
+        default: "block",
+        parseHTML: (element) =>
+          imageLayout(element.getAttribute("data-layout")),
+        renderHTML: (attributes) => ({
+          "data-layout": imageLayout(attributes.layout),
+        }),
       },
     };
   },
@@ -168,7 +191,6 @@ export function PostEditor() {
   const [syncing, setSyncing] = useState(true);
   const [search, setSearch] = useState("");
   const [preview, setPreview] = useState(false);
-  const [ribbonTab, setRibbonTab] = useState("home");
   const [publishing, setPublishing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState("");
@@ -563,6 +585,7 @@ export function PostEditor() {
           src: previewUrl,
           alt: result.alt,
           cmsPath: result.path,
+          layout: "block",
         } as Parameters<typeof editor.commands.setImage>[0])
         .run();
       setMessage(
@@ -575,6 +598,25 @@ export function PostEditor() {
     } finally {
       if (imageRef.current) imageRef.current.value = "";
     }
+  };
+  const selectedImageLayout = editor?.isActive("image")
+    ? imageLayout(editor.getAttributes("image").layout)
+    : "block";
+  const setSelectedImageLayout = (layout: ImageLayout) => {
+    if (!editor?.isActive("image")) return;
+    editor.chain().focus().updateAttributes("image", { layout }).run();
+    setMessage(`Image layout changed to ${layout.replace("-", " ")}.`);
+  };
+  const editImageAltText = () => {
+    if (!editor?.isActive("image")) return;
+    const current = String(editor.getAttributes("image").alt || "");
+    const alt = prompt(
+      "Describe this image for visitors using a screen reader.",
+      current,
+    );
+    if (alt === null) return;
+    editor.chain().focus().updateAttributes("image", { alt }).run();
+    setMessage("Image description updated.");
   };
   return (
     <div className="editor-workspace">
@@ -719,423 +761,428 @@ export function PostEditor() {
         </div>
         {!preview && (
           <>
-            <TabList
-              className="ribbon-tabs"
-              selectedValue={ribbonTab}
-              onTabSelect={(_, data) => setRibbonTab(String(data.value))}
-            >
-              <Tab value="home">Home</Tab>
-              <Tab value="insert">Insert</Tab>
-            </TabList>
             <Toolbar className="editor-ribbon" aria-label="Document formatting">
-              {ribbonTab === "home" ? (
-                <>
-                  <div className="toolbar-group">
-                    <Tool
-                      label="Undo (Ctrl+Z)"
-                      icon={<ArrowUndo20Regular />}
-                      onClick={() => editor?.chain().focus().undo().run()}
-                      disabled={!editor?.can().undo()}
-                    />
-                    <Tool
-                      label="Redo (Ctrl+Y)"
-                      icon={<ArrowRedo20Regular />}
-                      onClick={() => editor?.chain().focus().redo().run()}
-                      disabled={!editor?.can().redo()}
-                    />
-                    <span>History</span>
-                  </div>
-                  <div className="toolbar-group toolbar-group-wide">
-                    <div className="ribbon-control-stack clipboard-tools">
-                      <Tool
-                        label="Paste"
-                        icon={<ClipboardPaste20Regular />}
-                        onClick={() => void pasteText()}
-                      />
-                      <Tool
-                        label="Cut"
-                        icon={<Cut20Regular />}
-                        onClick={() => void copySelection(true)}
-                      />
-                      <Tool
-                        label="Copy"
-                        icon={<Copy20Regular />}
-                        onClick={() => void copySelection()}
-                      />
-                      <Tool
-                        label="Format painter"
-                        icon={<PaintBrush20Regular />}
-                        active={Boolean(formatBrush.current)}
-                        onClick={useFormatBrush}
-                      />
-                    </div>
-                    <span>Clipboard</span>
-                  </div>
-                  <div className="toolbar-group font-group">
-                    <div className="ribbon-control-stack">
-                      <div className="ribbon-row">
-                        <select
-                          aria-label="Font family"
-                          defaultValue=""
-                          onChange={(event) =>
-                            event.target.value
-                              ? editor
-                                  ?.chain()
-                                  .focus()
-                                  .setFontFamily(event.target.value)
-                                  .run()
-                              : editor?.chain().focus().unsetFontFamily().run()
-                          }
-                        >
-                          <option value="">Theme font</option>
-                          <option value="Arial">Arial</option>
-                          <option value="Georgia">Georgia</option>
-                          <option value="Segoe UI">Segoe UI</option>
-                          <option value="Times New Roman">
-                            Times New Roman
-                          </option>
-                          <option value="Courier New">Courier New</option>
-                        </select>
-                        <select
-                          className="font-size-select"
-                          aria-label="Font size"
-                          defaultValue="16"
-                          onChange={(event) =>
-                            editor
+              <div className="toolbar-group">
+                <Tool
+                  label="Undo (Ctrl+Z)"
+                  icon={<ArrowUndo20Regular />}
+                  onClick={() => editor?.chain().focus().undo().run()}
+                  disabled={!editor?.can().undo()}
+                />
+                <Tool
+                  label="Redo (Ctrl+Y)"
+                  icon={<ArrowRedo20Regular />}
+                  onClick={() => editor?.chain().focus().redo().run()}
+                  disabled={!editor?.can().redo()}
+                />
+                <span>History</span>
+              </div>
+              <div className="toolbar-group toolbar-group-wide">
+                <div className="ribbon-control-stack clipboard-tools">
+                  <Tool
+                    label="Paste"
+                    icon={<ClipboardPaste20Regular />}
+                    onClick={() => void pasteText()}
+                  />
+                  <Tool
+                    label="Cut"
+                    icon={<Cut20Regular />}
+                    onClick={() => void copySelection(true)}
+                  />
+                  <Tool
+                    label="Copy"
+                    icon={<Copy20Regular />}
+                    onClick={() => void copySelection()}
+                  />
+                  <Tool
+                    label="Format painter"
+                    icon={<PaintBrush20Regular />}
+                    active={Boolean(formatBrush.current)}
+                    onClick={useFormatBrush}
+                  />
+                </div>
+                <span>Clipboard</span>
+              </div>
+              <div className="toolbar-group font-group">
+                <div className="ribbon-control-stack">
+                  <div className="ribbon-row">
+                    <select
+                      aria-label="Font family"
+                      defaultValue=""
+                      onChange={(event) =>
+                        event.target.value
+                          ? editor
                               ?.chain()
                               .focus()
-                              .setFontSize(`${event.target.value}px`)
+                              .setFontFamily(event.target.value)
                               .run()
-                          }
-                        >
-                          {FONT_SIZES.map((size) => (
-                            <option key={size} value={size}>
-                              {size}
-                            </option>
-                          ))}
-                        </select>
-                        <Tool
-                          label="Increase font size"
-                          icon={<FontIncrease20Regular />}
-                          onClick={() => resizeText(1)}
-                        />
-                        <Tool
-                          label="Decrease font size"
-                          icon={<FontDecrease20Regular />}
-                          onClick={() => resizeText(-1)}
-                        />
-                        <select
-                          className="case-select"
-                          aria-label="Change case"
-                          defaultValue=""
-                          onChange={(event) => {
-                            changeCase(event.target.value);
-                            event.target.value = "";
-                          }}
-                        >
-                          <option value="">Aa</option>
-                          <option value="title">Capitalize Each Word</option>
-                          <option value="upper">UPPERCASE</option>
-                          <option value="lower">lowercase</option>
-                        </select>
-                      </div>
-                      <div className="ribbon-row">
-                        <Tool
-                          label="Bold (Ctrl+B)"
-                          icon={<TextBold20Regular />}
-                          active={editor?.isActive("bold")}
-                          onClick={() =>
-                            editor?.chain().focus().toggleBold().run()
-                          }
-                        />
-                        <Tool
-                          label="Italic (Ctrl+I)"
-                          icon={<TextItalic20Regular />}
-                          active={editor?.isActive("italic")}
-                          onClick={() =>
-                            editor?.chain().focus().toggleItalic().run()
-                          }
-                        />
-                        <Tool
-                          label="Underline (Ctrl+U)"
-                          icon={<TextUnderline20Regular />}
-                          active={editor?.isActive("underline")}
-                          onClick={() =>
-                            editor?.chain().focus().toggleUnderline().run()
-                          }
-                        />
-                        <Tool
-                          label="Strikethrough"
-                          icon={<TextStrikethrough20Regular />}
-                          active={editor?.isActive("strike")}
-                          onClick={() =>
-                            editor?.chain().focus().toggleStrike().run()
-                          }
-                        />
-                        <Tool
-                          label="Subscript"
-                          icon={<TextSubscript20Regular />}
-                          active={editor?.isActive("subscript")}
-                          onClick={() =>
-                            editor?.chain().focus().toggleSubscript().run()
-                          }
-                        />
-                        <Tool
-                          label="Superscript"
-                          icon={<TextSuperscript20Regular />}
-                          active={editor?.isActive("superscript")}
-                          onClick={() =>
-                            editor?.chain().focus().toggleSuperscript().run()
-                          }
-                        />
-                        <label
-                          className="color-tool"
-                          title="Text color"
-                          aria-label="Text color"
-                        >
-                          <TextColor20Regular />
-                          <input
-                            type="color"
-                            defaultValue="#111111"
-                            onChange={(event) =>
-                              editor
-                                ?.chain()
-                                .focus()
-                                .setColor(event.target.value)
-                                .run()
-                            }
-                          />
-                        </label>
-                        <label
-                          className="color-tool"
-                          title="Text highlight"
-                          aria-label="Text highlight"
-                        >
-                          <Highlight20Regular />
-                          <input
-                            type="color"
-                            defaultValue="#fff2a8"
-                            onChange={(event) =>
-                              editor
-                                ?.chain()
-                                .focus()
-                                .setHighlight({ color: event.target.value })
-                                .run()
-                            }
-                          />
-                        </label>
-                        <Tool
-                          label="Clear formatting"
-                          icon={<Dismiss20Regular />}
-                          onClick={() =>
-                            editor?.chain().focus().unsetAllMarks().run()
-                          }
-                        />
-                      </div>
-                    </div>
-                    <span>Font</span>
-                  </div>
-                  <div className="toolbar-group paragraph-group">
-                    <div className="ribbon-control-stack">
-                      <div className="ribbon-row">
-                        <Tool
-                          label="Bulleted list"
-                          icon={<TextBulletListLtr20Regular />}
-                          active={editor?.isActive("bulletList")}
-                          onClick={() =>
-                            editor?.chain().focus().toggleBulletList().run()
-                          }
-                        />
-                        <Tool
-                          label="Numbered list"
-                          icon={<TextNumberListLtr20Regular />}
-                          active={editor?.isActive("orderedList")}
-                          onClick={() =>
-                            editor?.chain().focus().toggleOrderedList().run()
-                          }
-                        />
-                        <Tool
-                          label="Checklist"
-                          icon={<TextBulletListSquare20Regular />}
-                          active={editor?.isActive("taskList")}
-                          onClick={() =>
-                            editor?.chain().focus().toggleTaskList().run()
-                          }
-                        />
-                        <Tool
-                          label="Decrease indent"
-                          icon={<TextIndentDecrease20Regular />}
-                          onClick={() => indentList(-1)}
-                          disabled={
-                            !editor?.isActive("listItem") &&
-                            !editor?.isActive("taskItem")
-                          }
-                        />
-                        <Tool
-                          label="Increase indent"
-                          icon={<TextIndentIncrease20Regular />}
-                          onClick={() => indentList(1)}
-                          disabled={
-                            !editor?.isActive("listItem") &&
-                            !editor?.isActive("taskItem")
-                          }
-                        />
-                        <select
-                          aria-label="Paragraph style"
-                          defaultValue="p"
-                          onChange={(event) => {
-                            const value = event.target.value;
-                            value === "p"
-                              ? editor?.chain().focus().setParagraph().run()
-                              : editor
-                                  ?.chain()
-                                  .focus()
-                                  .setHeading({ level: +value as 1 | 2 | 3 })
-                                  .run();
-                          }}
-                        >
-                          <option value="p">Paragraph</option>
-                          <option value="1">Heading 1</option>
-                          <option value="2">Heading 2</option>
-                          <option value="3">Heading 3</option>
-                        </select>
-                      </div>
-                      <div className="ribbon-row">
-                        <Tool
-                          label="Align left"
-                          icon={<TextAlignLeft20Regular />}
-                          active={editor?.isActive({ textAlign: "left" })}
-                          onClick={() =>
-                            editor?.chain().focus().setTextAlign("left").run()
-                          }
-                        />
-                        <Tool
-                          label="Align center"
-                          icon={<TextAlignCenter20Regular />}
-                          active={editor?.isActive({ textAlign: "center" })}
-                          onClick={() =>
-                            editor?.chain().focus().setTextAlign("center").run()
-                          }
-                        />
-                        <Tool
-                          label="Align right"
-                          icon={<TextAlignRight20Regular />}
-                          active={editor?.isActive({ textAlign: "right" })}
-                          onClick={() =>
-                            editor?.chain().focus().setTextAlign("right").run()
-                          }
-                        />
-                        <Tool
-                          label="Justify"
-                          icon={<TextAlignJustify20Regular />}
-                          active={editor?.isActive({ textAlign: "justify" })}
-                          onClick={() =>
-                            editor
-                              ?.chain()
-                              .focus()
-                              .setTextAlign("justify")
-                              .run()
-                          }
-                        />
-                        <Tool
-                          label="Block quote"
-                          icon={<TextQuote20Regular />}
-                          active={editor?.isActive("blockquote")}
-                          onClick={() =>
-                            editor?.chain().focus().toggleBlockquote().run()
-                          }
-                        />
-                        <Tool
-                          label="Code block"
-                          icon={<Code20Regular />}
-                          active={editor?.isActive("codeBlock")}
-                          onClick={() =>
-                            editor?.chain().focus().toggleCodeBlock().run()
-                          }
-                        />
-                        <select
-                          aria-label="Line spacing"
-                          defaultValue=""
-                          onChange={(event) =>
-                            event.target.value
-                              ? editor
-                                  ?.chain()
-                                  .focus()
-                                  .setLineHeight(event.target.value)
-                                  .run()
-                              : editor?.chain().focus().unsetLineHeight().run()
-                          }
-                        >
-                          <option value="">Line spacing</option>
-                          <option value="1">1.0</option>
-                          <option value="1.15">1.15</option>
-                          <option value="1.5">1.5</option>
-                          <option value="2">2.0</option>
-                        </select>
-                      </div>
-                    </div>
-                    <span>Paragraph</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="toolbar-group toolbar-group-wide">
-                    <Tool
-                      label="Link"
-                      icon={<Link20Regular />}
-                      onClick={askLink}
-                    />
-                    <Tool
-                      label="Image"
-                      icon={<Image20Regular />}
-                      onClick={() => imageRef.current?.click()}
-                    />
-                    <Tool
-                      label="Table"
-                      icon={<Table20Regular />}
-                      onClick={() =>
+                          : editor?.chain().focus().unsetFontFamily().run()
+                      }
+                    >
+                      <option value="">Theme font</option>
+                      <option value="Arial">Arial</option>
+                      <option value="Georgia">Georgia</option>
+                      <option value="Segoe UI">Segoe UI</option>
+                      <option value="Times New Roman">Times New Roman</option>
+                      <option value="Courier New">Courier New</option>
+                    </select>
+                    <select
+                      className="font-size-select"
+                      aria-label="Font size"
+                      defaultValue="16"
+                      onChange={(event) =>
                         editor
                           ?.chain()
                           .focus()
-                          .insertTable({
-                            rows: 3,
-                            cols: 3,
-                            withHeaderRow: true,
-                          })
+                          .setFontSize(`${event.target.value}px`)
                           .run()
                       }
+                    >
+                      {FONT_SIZES.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
+                      ))}
+                    </select>
+                    <Tool
+                      label="Increase font size"
+                      icon={<FontIncrease20Regular />}
+                      onClick={() => resizeText(1)}
                     />
                     <Tool
-                      label="Horizontal line"
-                      icon={<LineHorizontal120Regular />}
+                      label="Decrease font size"
+                      icon={<FontDecrease20Regular />}
+                      onClick={() => resizeText(-1)}
+                    />
+                    <select
+                      className="case-select"
+                      aria-label="Change case"
+                      defaultValue=""
+                      onChange={(event) => {
+                        changeCase(event.target.value);
+                        event.target.value = "";
+                      }}
+                    >
+                      <option value="">Aa</option>
+                      <option value="title">Capitalize Each Word</option>
+                      <option value="upper">UPPERCASE</option>
+                      <option value="lower">lowercase</option>
+                    </select>
+                  </div>
+                  <div className="ribbon-row">
+                    <Tool
+                      label="Bold (Ctrl+B)"
+                      icon={<TextBold20Regular />}
+                      active={editor?.isActive("bold")}
+                      onClick={() => editor?.chain().focus().toggleBold().run()}
+                    />
+                    <Tool
+                      label="Italic (Ctrl+I)"
+                      icon={<TextItalic20Regular />}
+                      active={editor?.isActive("italic")}
                       onClick={() =>
-                        editor?.chain().focus().setHorizontalRule().run()
+                        editor?.chain().focus().toggleItalic().run()
                       }
                     />
-                    <span>Insert</span>
-                  </div>
-                  <div className="toolbar-group">
                     <Tool
-                      label="Save draft (Ctrl+S)"
-                      icon={<Save20Regular />}
-                      onClick={() => void save()}
+                      label="Underline (Ctrl+U)"
+                      icon={<TextUnderline20Regular />}
+                      active={editor?.isActive("underline")}
+                      onClick={() =>
+                        editor?.chain().focus().toggleUnderline().run()
+                      }
                     />
                     <Tool
-                      label="Clear document formatting"
+                      label="Strikethrough"
+                      icon={<TextStrikethrough20Regular />}
+                      active={editor?.isActive("strike")}
+                      onClick={() =>
+                        editor?.chain().focus().toggleStrike().run()
+                      }
+                    />
+                    <Tool
+                      label="Subscript"
+                      icon={<TextSubscript20Regular />}
+                      active={editor?.isActive("subscript")}
+                      onClick={() =>
+                        editor?.chain().focus().toggleSubscript().run()
+                      }
+                    />
+                    <Tool
+                      label="Superscript"
+                      icon={<TextSuperscript20Regular />}
+                      active={editor?.isActive("superscript")}
+                      onClick={() =>
+                        editor?.chain().focus().toggleSuperscript().run()
+                      }
+                    />
+                    <label
+                      className="color-tool"
+                      title="Text color"
+                      aria-label="Text color"
+                    >
+                      <TextColor20Regular />
+                      <input
+                        type="color"
+                        defaultValue="#111111"
+                        onChange={(event) =>
+                          editor
+                            ?.chain()
+                            .focus()
+                            .setColor(event.target.value)
+                            .run()
+                        }
+                      />
+                    </label>
+                    <label
+                      className="color-tool"
+                      title="Text highlight"
+                      aria-label="Text highlight"
+                    >
+                      <Highlight20Regular />
+                      <input
+                        type="color"
+                        defaultValue="#fff2a8"
+                        onChange={(event) =>
+                          editor
+                            ?.chain()
+                            .focus()
+                            .setHighlight({ color: event.target.value })
+                            .run()
+                        }
+                      />
+                    </label>
+                    <Tool
+                      label="Clear formatting"
                       icon={<Dismiss20Regular />}
                       onClick={() =>
-                        editor
-                          ?.chain()
-                          .focus()
-                          .unsetAllMarks()
-                          .clearNodes()
-                          .run()
+                        editor?.chain().focus().unsetAllMarks().run()
                       }
                     />
-                    <span>Document</span>
                   </div>
-                </>
-              )}
+                </div>
+                <span>Font</span>
+              </div>
+              <div className="toolbar-group paragraph-group">
+                <div className="ribbon-control-stack">
+                  <div className="ribbon-row">
+                    <Tool
+                      label="Bulleted list"
+                      icon={<TextBulletListLtr20Regular />}
+                      active={editor?.isActive("bulletList")}
+                      onClick={() =>
+                        editor?.chain().focus().toggleBulletList().run()
+                      }
+                    />
+                    <Tool
+                      label="Numbered list"
+                      icon={<TextNumberListLtr20Regular />}
+                      active={editor?.isActive("orderedList")}
+                      onClick={() =>
+                        editor?.chain().focus().toggleOrderedList().run()
+                      }
+                    />
+                    <Tool
+                      label="Checklist"
+                      icon={<TextBulletListSquare20Regular />}
+                      active={editor?.isActive("taskList")}
+                      onClick={() =>
+                        editor?.chain().focus().toggleTaskList().run()
+                      }
+                    />
+                    <Tool
+                      label="Decrease indent"
+                      icon={<TextIndentDecrease20Regular />}
+                      onClick={() => indentList(-1)}
+                      disabled={
+                        !editor?.isActive("listItem") &&
+                        !editor?.isActive("taskItem")
+                      }
+                    />
+                    <Tool
+                      label="Increase indent"
+                      icon={<TextIndentIncrease20Regular />}
+                      onClick={() => indentList(1)}
+                      disabled={
+                        !editor?.isActive("listItem") &&
+                        !editor?.isActive("taskItem")
+                      }
+                    />
+                    <select
+                      aria-label="Paragraph style"
+                      defaultValue="p"
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        value === "p"
+                          ? editor?.chain().focus().setParagraph().run()
+                          : editor
+                              ?.chain()
+                              .focus()
+                              .setHeading({ level: +value as 1 | 2 | 3 })
+                              .run();
+                      }}
+                    >
+                      <option value="p">Paragraph</option>
+                      <option value="1">Heading 1</option>
+                      <option value="2">Heading 2</option>
+                      <option value="3">Heading 3</option>
+                    </select>
+                  </div>
+                  <div className="ribbon-row">
+                    <Tool
+                      label="Align left"
+                      icon={<TextAlignLeft20Regular />}
+                      active={editor?.isActive({ textAlign: "left" })}
+                      onClick={() =>
+                        editor?.chain().focus().setTextAlign("left").run()
+                      }
+                    />
+                    <Tool
+                      label="Align center"
+                      icon={<TextAlignCenter20Regular />}
+                      active={editor?.isActive({ textAlign: "center" })}
+                      onClick={() =>
+                        editor?.chain().focus().setTextAlign("center").run()
+                      }
+                    />
+                    <Tool
+                      label="Align right"
+                      icon={<TextAlignRight20Regular />}
+                      active={editor?.isActive({ textAlign: "right" })}
+                      onClick={() =>
+                        editor?.chain().focus().setTextAlign("right").run()
+                      }
+                    />
+                    <Tool
+                      label="Justify"
+                      icon={<TextAlignJustify20Regular />}
+                      active={editor?.isActive({ textAlign: "justify" })}
+                      onClick={() =>
+                        editor?.chain().focus().setTextAlign("justify").run()
+                      }
+                    />
+                    <Tool
+                      label="Block quote"
+                      icon={<TextQuote20Regular />}
+                      active={editor?.isActive("blockquote")}
+                      onClick={() =>
+                        editor?.chain().focus().toggleBlockquote().run()
+                      }
+                    />
+                    <Tool
+                      label="Code block"
+                      icon={<Code20Regular />}
+                      active={editor?.isActive("codeBlock")}
+                      onClick={() =>
+                        editor?.chain().focus().toggleCodeBlock().run()
+                      }
+                    />
+                    <select
+                      aria-label="Line spacing"
+                      defaultValue=""
+                      onChange={(event) =>
+                        event.target.value
+                          ? editor
+                              ?.chain()
+                              .focus()
+                              .setLineHeight(event.target.value)
+                              .run()
+                          : editor?.chain().focus().unsetLineHeight().run()
+                      }
+                    >
+                      <option value="">Line spacing</option>
+                      <option value="1">1.0</option>
+                      <option value="1.15">1.15</option>
+                      <option value="1.5">1.5</option>
+                      <option value="2">2.0</option>
+                    </select>
+                  </div>
+                </div>
+                <span>Paragraph</span>
+              </div>
+              <div className="toolbar-group toolbar-group-wide insert-group">
+                <Tool label="Link" icon={<Link20Regular />} onClick={askLink} />
+                <Tool
+                  label="Image"
+                  icon={<Image20Regular />}
+                  onClick={() => imageRef.current?.click()}
+                />
+                <Tool
+                  label="Table"
+                  icon={<Table20Regular />}
+                  onClick={() =>
+                    editor
+                      ?.chain()
+                      .focus()
+                      .insertTable({
+                        rows: 3,
+                        cols: 3,
+                        withHeaderRow: true,
+                      })
+                      .run()
+                  }
+                />
+                <Tool
+                  label="Horizontal line"
+                  icon={<LineHorizontal120Regular />}
+                  onClick={() =>
+                    editor?.chain().focus().setHorizontalRule().run()
+                  }
+                />
+                <span>Insert</span>
+              </div>
+              <div className="toolbar-group image-layout-group">
+                <div className="ribbon-control-stack">
+                  <select
+                    aria-label="Image text wrapping"
+                    value={selectedImageLayout}
+                    disabled={!editor?.isActive("image")}
+                    onChange={(event) =>
+                      setSelectedImageLayout(event.target.value as ImageLayout)
+                    }
+                  >
+                    <option value="inline">In line with text</option>
+                    <option value="block">Top and bottom</option>
+                    <option value="left">Square — left</option>
+                    <option value="right">Square — right</option>
+                    <option value="behind">Behind text</option>
+                    <option value="front">In front of text</option>
+                    <option value="full">Full width</option>
+                  </select>
+                  <div className="ribbon-row">
+                    <Tool
+                      label="Edit image description"
+                      icon={<Image20Regular />}
+                      onClick={editImageAltText}
+                      disabled={!editor?.isActive("image")}
+                    />
+                    <Tool
+                      label="Remove selected image"
+                      icon={<Delete20Regular />}
+                      onClick={() =>
+                        editor?.chain().focus().deleteSelection().run()
+                      }
+                      disabled={!editor?.isActive("image")}
+                    />
+                  </div>
+                </div>
+                <span>Image layout</span>
+              </div>
+              <div className="toolbar-group">
+                <Tool
+                  label="Save draft (Ctrl+S)"
+                  icon={<Save20Regular />}
+                  onClick={() => void save()}
+                />
+                <Tool
+                  label="Clear document formatting"
+                  icon={<Dismiss20Regular />}
+                  onClick={() =>
+                    editor?.chain().focus().unsetAllMarks().clearNodes().run()
+                  }
+                />
+                <span>Document</span>
+              </div>
             </Toolbar>
             <div className="document-canvas">
               <EditorContent editor={editor} />

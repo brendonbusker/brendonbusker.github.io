@@ -350,10 +350,21 @@ main {
   margin: auto;
 }
 .prose {
+  position: relative;
+  isolation: isolate;
   width: min(100%, var(--reading));
   margin: var(--space-6) auto 0;
   font: 400 1.22rem/1.72 var(--font-serif);
   color: #282b2e;
+}
+.prose::after {
+  display: block;
+  clear: both;
+  content: "";
+}
+.prose > :not(img) {
+  position: relative;
+  z-index: 1;
 }
 .prose h2,
 .prose h3 {
@@ -421,6 +432,42 @@ main {
   max-width: 100%;
   height: auto;
   margin: 2rem auto;
+}
+.prose img[data-layout="inline"] {
+  display: inline-block;
+  margin: 0 0.35rem;
+  vertical-align: middle;
+}
+.prose img[data-layout="full"] {
+  width: 100%;
+}
+.prose img[data-layout="left"],
+.prose img[data-layout="right"] {
+  max-width: 48%;
+  margin-top: 0.35rem;
+  margin-bottom: 1rem;
+}
+.prose img[data-layout="left"] {
+  float: left;
+  margin-right: 1.5rem;
+  margin-left: 0;
+}
+.prose img[data-layout="right"] {
+  float: right;
+  margin-right: 0;
+  margin-left: 1.5rem;
+}
+.prose img[data-layout="behind"],
+.prose img[data-layout="front"] {
+  position: absolute;
+  margin: 0;
+}
+.prose img[data-layout="behind"] {
+  z-index: 0;
+  opacity: 0.38;
+}
+.prose img[data-layout="front"] {
+  z-index: 3;
 }
 .prose mark {
   padding: 0.04em 0.12em;

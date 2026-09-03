@@ -116,11 +116,13 @@ describe("published content parsing", () => {
 describe("rich blog body sanitizing", () => {
   it("keeps editor formatting and strips executable content", () => {
     const clean = sanitizePostBody(
-      '<p style="text-align: center"><span style="font-family: Georgia; font-size: 24px; color: #315b71">Hello</span><script>alert(1)</script><img src="/uploads/posts/test/image.webp" alt="Example" onerror="alert(2)"></p>',
+      '<p style="text-align: center"><span style="font-family: Georgia; font-size: 24px; color: #315b71">Hello</span><script>alert(1)</script><img src="/uploads/posts/test/image.webp" alt="Example" data-layout="behind" onerror="alert(2)"><img src="/uploads/posts/test/second.webp" data-layout="not-real"></p>',
     );
     expect(clean).toContain('style="text-align:center"');
     expect(clean).toContain("font-family:Georgia");
     expect(clean).toContain('src="/uploads/posts/test/image.webp"');
+    expect(clean).toContain('data-layout="behind"');
+    expect(clean).toContain('data-layout="block"');
     expect(clean).not.toMatch(/script|onerror|alert/i);
   });
   it("continues sanitizing existing Markdown posts", () => {

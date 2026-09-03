@@ -66,6 +66,7 @@ test("authenticated admin shell exposes publishing sections", async ({
     updatedAt: "2026-09-01",
   };
   let deleteRequest: Record<string, string> | undefined;
+  let savedPostBody = "";
   await page.route("**/api/session", (route) =>
     route.fulfill({
       contentType: "application/json",
@@ -78,12 +79,22 @@ test("authenticated admin shell exposes publishing sections", async ({
       body: JSON.stringify({ draft: null }),
     }),
   );
-  await page.route("**/api/drafts", (route) =>
-    route.fulfill({
+  await page.route("**/api/drafts", (route) => {
+    if (route.request().method() === "PUT") {
+      const saved = route.request().postDataJSON() as {
+        payload?: { body?: string };
+      };
+      savedPostBody = saved.payload?.body || "";
+      return route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ savedAt: new Date().toISOString() }),
+      });
+    }
+    return route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({ drafts: [] }),
-    }),
-  );
+    });
+  });
   await page.route("**/api/published/posts", (route) => {
     if (route.request().method() === "DELETE") {
       deleteRequest = route.request().postDataJSON() as Record<string, string>;
@@ -159,7 +170,10 @@ test("authenticated admin shell exposes publishing sections", async ({
   await expect(
     page.locator(".toolbar-group > span", { hasText: "Paragraph" }),
   ).toBeVisible();
-  await page.getByRole("tab", { name: "Insert" }).click();
+  await expect(
+    page.locator(".toolbar-group > span", { hasText: "Insert" }),
+  ).toBeVisible();
+  await expect(page.getByRole("tab")).toHaveCount(0);
   page.once("dialog", (dialog) => dialog.accept("A test editor image"));
   await page.locator('input[type="file"][accept^="image/"]').setInputFiles({
     name: "test.png",
@@ -177,8 +191,30 @@ test("authenticated admin shell exposes publishing sections", async ({
     "data-cms-path",
     "/uploads/posts/starting-this-site/test-image.webp",
   );
-  await insertedImage.click();
   await expect(writingSurface.locator("[data-resize-handle]")).toHaveCount(6);
+  const imageWrapping = page.getByLabel("Image text wrapping");
+  await expect(imageWrapping).toBeEnabled();
+  await imageWrapping.selectOption("left");
+  await expect(insertedImage).toHaveAttribute("data-layout", "left");
+  await expect
+    .poll(() =>
+      insertedImage.evaluate((image) => {
+        const container = image.closest("[data-resize-container]");
+        return container ? getComputedStyle(container).float : "";
+      }),
+    )
+    .toBe("left");
+  await imageWrapping.selectOption("behind");
+  await expect(insertedImage).toHaveAttribute("data-layout", "behind");
+  await expect
+    .poll(() =>
+      insertedImage.evaluate((image) => {
+        const container = image.closest("[data-resize-container]");
+        return container ? getComputedStyle(container).position : "";
+      }),
+    )
+    .toBe("absolute");
+  await expect.poll(() => savedPostBody).toContain('data-layout="behind"');
   page.once("dialog", (dialog) => dialog.accept());
   await page
     .getByRole("button", {
