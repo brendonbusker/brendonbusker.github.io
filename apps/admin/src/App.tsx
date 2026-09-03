@@ -1,31 +1,46 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import {
-  FluentProvider,
-  Spinner,
-  webLightTheme,
-} from "@fluentui/react-components";
+import { FluentProvider, Spinner } from "@fluentui/react-components";
 import { api, setCsrf, type Session } from "./api";
 import { LoginPage } from "./components/LoginPage";
 import { AdminShell } from "./components/AdminShell";
 import { Dashboard } from "./components/Dashboard";
+import {
+  applyAdminTheme,
+  getAdminTheme,
+  readStoredAdminTheme,
+  type AdminThemeId,
+} from "./themes";
 const PostEditor = lazy(() =>
-  import("./components/PostEditor").then((module) => ({ default: module.PostEditor })),
+  import("./components/PostEditor").then((module) => ({
+    default: module.PostEditor,
+  })),
 );
 const ProjectEditor = lazy(() =>
-  import("./components/ProjectEditor").then((module) => ({ default: module.ProjectEditor })),
+  import("./components/ProjectEditor").then((module) => ({
+    default: module.ProjectEditor,
+  })),
 );
 const ResumeEditor = lazy(() =>
-  import("./components/ResumeEditor").then((module) => ({ default: module.ResumeEditor })),
+  import("./components/ResumeEditor").then((module) => ({
+    default: module.ResumeEditor,
+  })),
 );
 const SiteEditor = lazy(() =>
-  import("./components/SiteEditor").then((module) => ({ default: module.SiteEditor })),
+  import("./components/SiteEditor").then((module) => ({
+    default: module.SiteEditor,
+  })),
 );
 const Settings = lazy(() =>
-  import("./components/Settings").then((module) => ({ default: module.Settings })),
+  import("./components/Settings").then((module) => ({
+    default: module.Settings,
+  })),
 );
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [page, setPage] = useState("home");
+  const [themeId, setThemeId] = useState<AdminThemeId>(readStoredAdminTheme);
+  const theme = getAdminTheme(themeId);
+  useEffect(() => applyAdminTheme(theme), [theme]);
   useEffect(() => {
     api<Session>("/api/session")
       .then((s) => {
@@ -53,7 +68,13 @@ export default function App() {
   else
     content = (
       <AdminShell page={page} setPage={setPage} onLogout={logout}>
-        <Suspense fallback={<div className="app-loading"><Spinner label="Opening editor…" /></div>}>
+        <Suspense
+          fallback={
+            <div className="app-loading">
+              <Spinner label="Opening editor…" />
+            </div>
+          }
+        >
           {page === "home" ? (
             <Dashboard go={setPage} />
           ) : page === "posts" ? (
@@ -65,10 +86,10 @@ export default function App() {
           ) : page === "site" ? (
             <SiteEditor />
           ) : (
-            <Settings />
+            <Settings themeId={themeId} onThemeChange={setThemeId} />
           )}
         </Suspense>
       </AdminShell>
     );
-  return <FluentProvider theme={webLightTheme}>{content}</FluentProvider>;
+  return <FluentProvider theme={theme.fluent}>{content}</FluentProvider>;
 }

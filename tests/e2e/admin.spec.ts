@@ -248,4 +248,35 @@ test("authenticated admin shell exposes publishing sections", async ({
     "src",
     "/uploads/projects/shiny-hunt-tracker/cover.webp",
   );
+  await page
+    .getByRole("complementary", { name: "Publishing sections" })
+    .getByRole("button", { name: "Settings", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Choose your atmosphere" }),
+  ).toBeVisible();
+  await expect(page.locator(".theme-card")).toHaveCount(13);
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-admin-theme",
+    "light",
+  );
+  await page.getByRole("button", { name: "Use Hacker theme" }).click();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-admin-theme",
+    "hacker",
+  );
+  await expect
+    .poll(() =>
+      page.evaluate(() => localStorage.getItem("brendon-publishing-theme")),
+    )
+    .toBe("hacker");
+  await expect(page.locator(".workspace")).toHaveCSS(
+    "background-color",
+    "rgb(2, 5, 3)",
+  );
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-admin-theme",
+    "hacker",
+  );
 });

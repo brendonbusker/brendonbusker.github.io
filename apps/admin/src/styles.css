@@ -1,7 +1,24 @@
 :root {
-  font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
-  color: #242424;
-  background: #f5f5f5;
+  --admin-font: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --admin-background: #f5f5f5;
+  --admin-surface: #fff;
+  --admin-surface-alt: #fafafa;
+  --admin-nav: #fafafa;
+  --admin-text: #242424;
+  --admin-muted: #616161;
+  --admin-border: #e0e0e0;
+  --admin-border-strong: #d1d1d1;
+  --admin-accent: #0f6cbd;
+  --admin-accent-strong: #0f548c;
+  --admin-accent-soft: #eaf3fc;
+  --admin-hover: #f0f0f0;
+  --admin-canvas: #e9e9e9;
+  --admin-success: #0e7c3a;
+  --admin-error: #c50f1f;
+  --admin-glow: none;
+  font-family: var(--admin-font);
+  color: var(--admin-text);
+  background: var(--admin-background);
   font-synthesis: none;
 }
 * {
@@ -9,6 +26,8 @@
 }
 body {
   margin: 0;
+  color: var(--admin-text);
+  background: var(--admin-background);
 }
 button,
 input,
@@ -900,7 +919,351 @@ select {
   background: #fff;
   color: #242424;
 }
+
+/* The admin theme layer intentionally leaves document and public-site previews
+   neutral so they continue to represent published output. */
+.admin-shell,
+.workspace,
+.post-editor,
+.workspace-page {
+  color: var(--admin-text);
+  background-color: var(--admin-background);
+}
+.app-bar,
+.editor-titlebar,
+.command-header,
+.document-list,
+.editor-ribbon,
+.form-grid section,
+.single-form,
+.resume-form > section {
+  color: var(--admin-text);
+  background-color: var(--admin-surface);
+  border-color: var(--admin-border-strong);
+}
+.side-nav {
+  color: var(--admin-text);
+  background-color: var(--admin-nav);
+  border-color: var(--admin-border);
+}
+.side-nav button {
+  color: var(--admin-text);
+}
+.side-nav button:hover,
+.color-tool:hover {
+  background-color: var(--admin-hover);
+}
+.side-nav button.active,
+.document-row.active {
+  color: var(--admin-accent);
+  background-color: var(--admin-accent-soft);
+}
+.side-nav button.active::before,
+.document-icon,
+.login-mark {
+  background-color: var(--admin-accent);
+}
+.document-row.active {
+  border-left-color: var(--admin-accent);
+}
+.app-title b,
+.page-label,
+.product-name {
+  color: var(--admin-accent);
+}
+.app-environment,
+.workspace-page > header > p:last-child,
+.command-header p,
+.list-status,
+.source-status,
+.save-status,
+.document-row small,
+.toolbar-group > span:last-child {
+  color: var(--admin-muted);
+}
+.save-status.saved {
+  color: var(--admin-success);
+}
+.save-status.error {
+  color: var(--admin-error);
+}
+.metadata-strip,
+.repeatable-card {
+  color: var(--admin-text);
+  background-color: var(--admin-surface-alt);
+  border-color: var(--admin-border-strong);
+}
+.document-row {
+  color: var(--admin-text);
+  background-color: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+.document-icon.published,
+.publish-message {
+  background-color: var(--admin-success);
+}
+.publish-message.error {
+  background-color: var(--admin-error);
+}
+.toolbar-group,
+.editor-ribbon,
+.metadata-strip,
+.dashboard > header,
+.dashboard dl > div,
+.repeatable-card,
+.resume-preview article {
+  border-color: var(--admin-border);
+}
+.toolbar-group select,
+.project-switcher {
+  color: var(--admin-text);
+  background-color: var(--admin-surface);
+  border-color: var(--admin-border-strong);
+}
+.document-canvas,
+.preview-canvas {
+  background-color: var(--admin-canvas);
+}
+.settings-note {
+  color: var(--admin-text);
+  background-color: var(--admin-accent-soft);
+  border-color: var(--admin-accent);
+}
+.login-page {
+  color: var(--admin-text);
+  background: linear-gradient(
+    90deg,
+    var(--admin-background) 0,
+    var(--admin-background) 50%,
+    var(--admin-surface-alt) 50%
+  );
+}
+.login-card {
+  color: var(--admin-text);
+  background: var(--admin-surface);
+  border-color: var(--admin-border-strong);
+  box-shadow: var(--admin-glow);
+}
+.login-copy {
+  color: var(--admin-muted);
+}
+.app-bar,
+.side-nav,
+.command-header,
+.editor-titlebar,
+.document-list,
+.editor-ribbon,
+.metadata-strip {
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+[data-admin-theme="hacker"] .workspace,
+[data-admin-theme="amber"] .workspace {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0,
+    transparent 3px,
+    rgb(255 255 255 / 1.5%) 3px,
+    rgb(255 255 255 / 1.5%) 4px
+  );
+}
+[data-admin-theme="synthwave"] .workspace {
+  background-image: radial-gradient(
+    circle at 80% 0%,
+    rgb(0 229 255 / 9%),
+    transparent 34rem
+  );
+}
+[data-admin-theme="blueprint"] .workspace {
+  background-image:
+    linear-gradient(rgb(111 195 255 / 4%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(111 195 255 / 4%) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.settings-page {
+  max-width: 1320px;
+}
+.theme-panel {
+  padding: 26px;
+  color: var(--admin-text);
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  box-shadow: var(--admin-glow);
+}
+.settings-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--admin-border);
+}
+.settings-section-heading h2 {
+  margin: 5px 0 0;
+  font-size: 24px;
+}
+.settings-section-heading > p {
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: 12px;
+}
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 15px;
+  padding-top: 20px;
+}
+.theme-card {
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+  padding: 10px;
+  color: var(--admin-text);
+  text-align: left;
+  background: var(--admin-surface-alt);
+  border: 1px solid var(--admin-border);
+  border-radius: 7px;
+  cursor: pointer;
+  transition:
+    translate 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+.theme-card:hover {
+  translate: 0 -2px;
+  border-color: var(--admin-accent);
+  box-shadow: var(--admin-glow);
+}
+.theme-card:focus-visible {
+  outline: 3px solid var(--admin-accent);
+  outline-offset: 2px;
+}
+.theme-card.selected {
+  border-color: var(--admin-accent);
+  box-shadow:
+    0 0 0 1px var(--admin-accent),
+    var(--admin-glow);
+}
+.theme-preview {
+  display: grid;
+  height: 112px;
+  overflow: hidden;
+  color: var(--preview-text);
+  background: var(--preview-bg);
+  border: 1px solid var(--preview-border);
+  border-radius: 4px;
+}
+.theme-preview-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px;
+  background: var(--preview-surface);
+  border-bottom: 1px solid var(--preview-border);
+}
+.theme-preview-bar i {
+  width: 5px;
+  height: 5px;
+  background: var(--preview-muted);
+  border-radius: 50%;
+}
+.theme-preview-bar i:first-child {
+  background: var(--preview-accent);
+}
+.theme-preview-body {
+  display: grid;
+  grid-template-columns: 30% 1fr;
+}
+.theme-preview-nav {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 12px 8px;
+  background: var(--preview-nav);
+  border-right: 1px solid var(--preview-border);
+}
+.theme-preview-nav i,
+.theme-preview-content i {
+  display: block;
+  height: 4px;
+  background: var(--preview-muted);
+  border-radius: 4px;
+  opacity: 0.65;
+}
+.theme-preview-nav i:first-child {
+  height: 12px;
+  background: var(--preview-accent-soft);
+  border-left: 2px solid var(--preview-accent);
+  opacity: 1;
+}
+.theme-preview-content {
+  display: grid;
+  align-content: start;
+  grid-template-columns: 1fr 0.7fr;
+  gap: 7px;
+  padding: 14px;
+  background: var(--preview-bg);
+}
+.theme-preview-content .wide {
+  grid-column: 1 / -1;
+  width: 64%;
+  height: 7px;
+  background: var(--preview-text);
+}
+.theme-preview-content b {
+  grid-column: 1 / -1;
+  height: 28px;
+  margin-top: 2px;
+  background: var(--preview-surface);
+  border: 1px solid var(--preview-border);
+  border-top: 3px solid var(--preview-accent);
+  border-radius: 2px;
+}
+.theme-card-copy {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.theme-card-copy > span {
+  display: grid;
+}
+.theme-card-copy strong {
+  font-size: 14px;
+}
+.theme-card-copy small,
+.theme-description {
+  color: var(--admin-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.theme-card-copy svg {
+  flex: 0 0 auto;
+  color: var(--admin-accent);
+}
+.theme-description {
+  min-height: 31px;
+}
+.settings-system-panel {
+  margin-top: 24px;
+}
+
+/* Published-content previews remain intentionally unthemed. */
+.document-surface,
+.preview-canvas article,
+.project-preview,
+.homepage-preview,
+.resume-preview {
+  color: #242424;
+}
 @media (max-width: 900px) {
+  .theme-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .admin-shell {
     grid-template-columns: 64px 1fr;
   }
@@ -954,6 +1317,15 @@ select {
   }
 }
 @media (max-width: 620px) {
+  .theme-grid {
+    grid-template-columns: 1fr;
+  }
+  .theme-panel {
+    padding: 16px;
+  }
+  .settings-section-heading {
+    display: grid;
+  }
   .admin-shell {
     grid-template: 48px 56px 1fr/1fr;
   }
@@ -1027,7 +1399,7 @@ select {
     grid-column: 1/-1;
   }
   .login-page {
-    background: #f5f5f5;
+    background: var(--admin-background);
   }
   .login-card {
     padding: 24px;
