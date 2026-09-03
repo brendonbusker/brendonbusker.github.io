@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">Brendon Busker</title>
+  <desc id="description">The Midnight-themed landing page for Brendon Busker’s personal website.</desc>
+
+  <rect width="1200" height="630" fill="#090e17"/>
+  <rect width="1200" height="5" fill="#050912"/>
+
+  <text x="16" y="44" fill="#eef6ff" font-family="Georgia, serif" font-size="22" font-weight="700">Brendon Busker</text>
+  <g fill="#eef6ff" font-family="Arial, sans-serif" font-size="14" font-weight="700">
+    <text x="730" y="44">Home</text>
+    <text x="818" y="44">Blog</text>
+    <text x="894" y="44">Projects</text>
+    <text x="998" y="44">Résumé</text>
+  </g>
+  <line x1="729" y1="58" x2="769" y2="58" stroke="#5bc0eb" stroke-width="2"/>
+  <rect x="1087" y="22" width="107" height="34" rx="17" fill="#111827" stroke="#354963"/>
+  <circle cx="1105" cy="39" r="6" fill="#eef6ff"/>
+  <path d="M1105 33 A6 6 0 0 0 1105 45 Z" fill="#5bc0eb"/>
+  <text x="1118" y="44" fill="#eef6ff" font-family="Arial, sans-serif" font-size="12" font-weight="700">Site default</text>
+  <line x1="14" y1="86" x2="1194" y2="86" stroke="#354963"/>
+
+  <text x="16" y="224" fill="#9fb0c4" font-family="Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="2.1">HOUSTON, TEXAS · CST</text>
+  <text x="16" y="336" fill="#eef6ff" font-family="Georgia, serif" font-size="132" font-weight="500" letter-spacing="-5">Brendon</text>
+  <text x="16" y="446" fill="#eef6ff" font-family="Georgia, serif" font-size="132" font-weight="500" letter-spacing="-5">Busker</text>
+  <text x="16" y="535" fill="#eef6ff" font-family="Georgia, serif" font-size="47">Big fan of building things</text>
+
+  <g fill="#eef6ff" font-family="Arial, sans-serif" font-size="20">
+    <text x="795" y="246">Welcome to my site. This site serves as a</text>
+    <text x="795" y="278">professional and personal outlet for stuff</text>
+    <text x="795" y="310">I'm building, things I'm thinking about, or</text>
+    <text x="795" y="342">even just blogging everyday life. I'll try to</text>
+    <text x="795" y="374">keep sections like my Resume as up-to-date</text>
+    <text x="795" y="406">as possible, but always assume things could</text>
+    <text x="795" y="438">be outdated.</text>
+  </g>
+
+  <g fill="#9fb0c4" font-family="Arial, sans-serif" font-size="17">
+    <text x="795" y="482">When I'm not building or bumming around, I love</text>
+    <text x="795" y="510">spending time with my friends playing video games</text>
+    <text x="795" y="538">and hanging out with my wife 😁</text>
+  </g>
+
+  <g fill="#eef6ff" font-family="Arial, sans-serif" font-size="14" font-weight="700">
+    <text x="795" y="586">GitHub ↗</text>
+    <text x="880" y="586">LinkedIn ↗</text>
+    <text x="982" y="586">Browse projects →</text>
+  </g>
+  <line x1="795" y1="594" x2="854" y2="594" stroke="#5bc0eb"/>
+  <line x1="880" y1="594" x2="954" y2="594" stroke="#5bc0eb"/>
+  <line x1="982" y1="594" x2="1102" y2="594" stroke="#5bc0eb"/>
+</svg>

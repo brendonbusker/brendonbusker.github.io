@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import appearance from "../../apps/site/src/data/appearance.json";
+import projectsPage from "../../apps/site/src/data/projects-page.json";
 test("homepage, archive, post, projects, resume, and 404 render", async ({
   page,
 }) => {
@@ -6,13 +8,21 @@ test("homepage, archive, post, projects, resume, and 404 render", async ({
   await expect(
     page.getByRole("heading", { name: "Brendon Busker" }),
   ).toBeVisible();
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+    "content",
+    "https://brendonbusker.github.io/og-v2.png",
+  );
+  await expect(page.locator('meta[property="og:image:width"]')).toHaveAttribute(
+    "content",
+    "1200",
+  );
   await page.goto("http://127.0.0.1:4321/blog/");
   await expect(page.getByRole("heading", { name: "2026" })).toBeVisible();
   await page.locator(".archive-row h3 a").first().click();
   await expect(page.locator("article.post")).toBeVisible();
   await page.goto("http://127.0.0.1:4321/projects/");
   await expect(
-    page.getByRole("heading", { name: "Useful things, built with care." }),
+    page.getByRole("heading", { name: projectsPage.headline }),
   ).toBeVisible();
   await page.goto("http://127.0.0.1:4321/resume/");
   await expect(
@@ -25,26 +35,46 @@ test("homepage, archive, post, projects, resume, and 404 render", async ({
 test("visitor theme choice persists while the resume keeps its configured policy", async ({
   page,
 }) => {
+  const resolveTheme = (choice: string) =>
+    choice === "system" ? "light" : choice;
+  const defaultTheme = resolveTheme(appearance.defaultTheme);
   await page.goto("http://127.0.0.1:4321/");
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-theme",
+    defaultTheme,
+  );
+  if (!appearance.allowVisitorSelection || !appearance.visitorThemes.length) {
+    await expect(page.locator(".theme-picker")).toHaveCount(0);
+    return;
+  }
+  const choice = appearance.visitorThemes[0];
+  const chosenTheme = resolveTheme(choice);
   await page.getByRole("button", { name: "Site default" }).click();
-  await page.getByRole("menuitemradio", { name: /Hacker/ }).click();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "hacker");
+  await page.locator(`[data-theme-choice="${choice}"]`).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", chosenTheme);
   await expect
     .poll(() =>
       page.evaluate(() => localStorage.getItem("brendon-public-theme")),
     )
-    .toBe("hacker");
+    .toBe(choice);
 
   await page.goto("http://127.0.0.1:4321/blog/");
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "hacker");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", chosenTheme);
   await page.goto("http://127.0.0.1:4321/resume/");
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  const resumeTheme =
+    appearance.resumeThemeMode === "light"
+      ? "light"
+      : appearance.resumeThemeMode === "active"
+        ? chosenTheme
+        : defaultTheme;
+  await expect(page.locator("html")).toHaveAttribute("data-theme", resumeTheme);
   await expect(page.locator("html")).toHaveAttribute(
     "data-theme-preference",
-    "hacker",
+    choice,
   );
-  await expect(page.locator(".theme-picker")).toHaveCount(0);
+  await expect(page.locator(".theme-picker")).toHaveCount(
+    appearance.resumeThemeMode === "active" ? 1 : 0,
+  );
 });
 
 test("every public palette remains readable and contained on every main page", async ({
