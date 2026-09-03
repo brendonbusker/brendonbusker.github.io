@@ -673,6 +673,99 @@ async function githubFile(
     commit: { sha: string; html_url: string };
   }>();
 }
+
+async function githubDeleteFile(
+  env: Env,
+  path: string,
+  expectedSha: string,
+  message: string,
+) {
+  if (!isAllowedRepositoryPath(path))
+    throw new Error("Repository path rejected");
+  const base = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${path}`;
+  const headers = githubHeaders(env);
+  const currentResponse = await fetch(
+    `${base}?ref=${encodeURIComponent(env.GITHUB_BRANCH)}`,
+    { headers },
+  );
+  if (currentResponse.status === 404)
+    throw new Error("The published post no longer exists");
+  if (!currentResponse.ok)
+    throw new Error(`GitHub read failed (${currentResponse.status})`);
+  const current = await currentResponse.json<{ sha: string }>();
+  if (current.sha !== expectedSha)
+    throw new Error(
+      "The published post changed since it was loaded. Refresh before deleting.",
+    );
+  const response = await fetch(base, {
+    method: "DELETE",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message,
+      sha: current.sha,
+      branch: env.GITHUB_BRANCH,
+    }),
+  });
+  if (!response.ok)
+    throw new Error(`GitHub delete failed (${response.status})`);
+  return response.json<{
+    commit: { sha: string; html_url: string };
+  }>();
+}
+
+app.delete("/api/published/posts", async (c) => {
+  try {
+    const body = await c.req.json<{
+      path?: string;
+      expectedSha?: string;
+      contentKey?: string;
+      title?: string;
+    }>();
+    const path = body.path || "";
+    const expectedSha = body.expectedSha || "";
+    const contentKey = body.contentKey || "";
+    const title = (body.title || "post").slice(0, 180);
+    if (
+      !path.startsWith("apps/site/src/content/posts/") ||
+      !path.endsWith(".md") ||
+      !isAllowedRepositoryPath(path) ||
+      !/^[0-9a-f]{40}$/i.test(expectedSha) ||
+      !contentKey ||
+      contentKey.length > 160
+    )
+      return c.json({ error: "Invalid published post deletion request." }, 400);
+    const result = await githubDeleteFile(
+      c.env,
+      path,
+      expectedSha,
+      `cms: delete post "${title.replace(/[\r\n"]/g, "").trim()}"`,
+    );
+    await c.env.DB.prepare(
+      "DELETE FROM drafts WHERE content_type='post' AND content_key=?",
+    )
+      .bind(contentKey)
+      .run();
+    await securityEvent(c.env, c.req.raw, "published_post_deleted", { path });
+    return c.json({
+      commitUrl: result.commit.html_url,
+      version: result.commit.sha,
+    });
+  } catch (error) {
+    const id = crypto.randomUUID();
+    console.error(
+      "delete_post_error",
+      id,
+      error instanceof Error ? error.message : "unknown",
+    );
+    return c.json(
+      {
+        error: `Published post deletion failed. Refresh and try again. Reference ${id}.`,
+      },
+      400,
+    );
+  }
+});
+
 app.post("/api/publish", async (c) => {
   try {
     const body = await c.req.json<{

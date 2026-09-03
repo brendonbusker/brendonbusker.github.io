@@ -18,11 +18,9 @@ export async function api<T>(path: string, options: RequestInit = {}) {
     headers,
     credentials: "same-origin",
   });
-  const data = (await response
-    .json()
-    .catch(() => ({
-      error: "The server returned an unreadable response.",
-    }))) as Record<string, unknown>;
+  const data = (await response.json().catch(() => ({
+    error: "The server returned an unreadable response.",
+  }))) as Record<string, unknown>;
   if (!response.ok)
     throw new Error(
       typeof data.error === "string"
@@ -75,4 +73,14 @@ export const publishedApi = {
     api<PublishedItem<T>>(`/api/published/${type}`),
   collection: <T>(type: "posts" | "projects") =>
     api<{ items: Array<PublishedItem<T>> }>(`/api/published/${type}`),
+  removePost: (input: {
+    path: string;
+    expectedSha: string;
+    contentKey: string;
+    title: string;
+  }) =>
+    api<{ commitUrl: string; version: string }>("/api/published/posts", {
+      method: "DELETE",
+      body: JSON.stringify(input),
+    }),
 };

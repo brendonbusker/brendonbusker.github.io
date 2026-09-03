@@ -65,6 +65,7 @@ test("authenticated admin shell exposes publishing sections", async ({
     createdAt: "2026-08-31",
     updatedAt: "2026-09-01",
   };
+  let deleteRequest: Record<string, string> | undefined;
   await page.route("**/api/session", (route) =>
     route.fulfill({
       contentType: "application/json",
@@ -83,20 +84,30 @@ test("authenticated admin shell exposes publishing sections", async ({
       body: JSON.stringify({ drafts: [] }),
     }),
   );
-  await page.route("**/api/published/posts", (route) =>
-    route.fulfill({
+  await page.route("**/api/published/posts", (route) => {
+    if (route.request().method() === "DELETE") {
+      deleteRequest = route.request().postDataJSON() as Record<string, string>;
+      return route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          commitUrl: "https://github.test/commit",
+          version: "b".repeat(40),
+        }),
+      });
+    }
+    return route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
         items: [
           {
             content: publishedPost,
             path: "apps/site/src/content/posts/starting-this-site.md",
-            sha: "post-sha",
+            sha: "a".repeat(40),
           },
         ],
       }),
-    }),
-  );
+    });
+  });
   await page.route("**/api/published/projects", (route) =>
     route.fulfill({
       contentType: "application/json",
@@ -168,6 +179,25 @@ test("authenticated admin shell exposes publishing sections", async ({
   );
   await insertedImage.click();
   await expect(writingSurface.locator("[data-resize-handle]")).toHaveCount(6);
+  page.once("dialog", (dialog) => dialog.accept());
+  await page
+    .getByRole("button", {
+      name: "Delete published post Building a place for the work between projects",
+    })
+    .click();
+  await expect(
+    page.getByText("Published post deleted.", { exact: false }),
+  ).toBeVisible();
+  expect(deleteRequest).toMatchObject({
+    path: "apps/site/src/content/posts/starting-this-site.md",
+    expectedSha: "a".repeat(40),
+    contentKey: publishedPost.id,
+  });
+  await expect(
+    page.getByRole("button", {
+      name: /Building a place for the work between projects/,
+    }),
+  ).toHaveCount(0);
   await page
     .getByRole("complementary", { name: "Publishing sections" })
     .getByRole("button", { name: "Projects", exact: true })

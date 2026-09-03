@@ -170,6 +170,7 @@ export function PostEditor() {
   const [preview, setPreview] = useState(false);
   const [ribbonTab, setRibbonTab] = useState("home");
   const [publishing, setPublishing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState("");
   const imageRef = useRef<HTMLInputElement>(null);
   const loadedRevision = useRef(-1);
@@ -340,22 +341,46 @@ export function PostEditor() {
       setPublishing(false);
     }
   };
-  const deleteDraft = async () => {
+  const deletePost = async () => {
     const source = publishedPosts.find(({ content }) => content.id === post.id);
     const promptText = source
-      ? `Discard unpublished changes to "${post.title}" and reload the published version?`
-      : `Delete "${post.title || "this draft"}"?`;
+      ? `Permanently delete the published post "${post.title}"? It will be removed from the public Blog after the next deployment, and this cannot be undone from the admin.`
+      : `Delete the draft "${post.title || "Untitled post"}"?`;
     if (!confirm(promptText)) return;
-    await draftsApi.remove("post", selected);
-    setDraftPosts((items) => items.filter(({ key }) => key !== selected));
-    if (source) {
-      reset(source.content);
-      setMessage("Unpublished changes discarded. Published post reloaded.");
-    } else {
+    setDeleting(true);
+    setMessage("");
+    try {
+      if (source) {
+        const result = await publishedApi.removePost({
+          path: source.path,
+          expectedSha: source.sha,
+          contentKey: selected,
+          title: post.title,
+        });
+        setPublishedPosts((items) => items.filter((item) => item !== source));
+        setDraftPosts((items) => items.filter(({ key }) => key !== selected));
+        const next = newPost();
+        setScratchPosts((items) => ({ ...items, [next.id]: next }));
+        setSelected(next.id);
+        setPreview(false);
+        setMessage(
+          `Published post deleted. Site deployment is in progress. Version ${result.version.slice(0, 8)}.`,
+        );
+        return;
+      }
+      await draftsApi.remove("post", selected);
+      setDraftPosts((items) => items.filter(({ key }) => key !== selected));
       const next = newPost();
       setScratchPosts((items) => ({ ...items, [next.id]: next }));
       setSelected(next.id);
+      setPreview(false);
       setMessage("Draft deleted. A new blank post is ready.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Post deletion failed.",
+      );
+    } finally {
+      setDeleting(false);
     }
   };
   const listEntries = useMemo(() => {
@@ -630,16 +655,32 @@ export function PostEditor() {
               appearance="primary"
               icon={<Send20Regular />}
               onClick={publish}
-              disabled={publishing || syncing || loading || !post.title}
+              disabled={
+                publishing || deleting || syncing || loading || !post.title
+              }
             >
               {publishing ? "Publishing…" : "Publish"}
             </Button>
-            <Button
-              appearance="subtle"
-              icon={<Delete20Regular />}
-              onClick={deleteDraft}
-              aria-label={`Delete ${post.title || "draft"}`}
-            />
+            <Tooltip
+              content={
+                publishedPosts.some(({ content }) => content.id === post.id)
+                  ? "Delete published post"
+                  : "Delete draft"
+              }
+              relationship="label"
+            >
+              <Button
+                appearance="subtle"
+                icon={<Delete20Regular />}
+                onClick={deletePost}
+                disabled={deleting || syncing || loading}
+                aria-label={
+                  publishedPosts.some(({ content }) => content.id === post.id)
+                    ? `Delete published post ${post.title}`
+                    : `Delete draft ${post.title || "Untitled post"}`
+                }
+              />
+            </Tooltip>
           </div>
         </header>
         <div className="metadata-strip">
