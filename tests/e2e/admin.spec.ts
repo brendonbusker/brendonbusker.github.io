@@ -19,6 +19,7 @@ test("admin presents a focused login without exposing credentials", async ({
     page.getByRole("heading", { name: "Sign in to edit the site" }),
   ).toBeVisible();
   await expect(page.getByLabel("Password")).toHaveAttribute("type", "password");
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeDisabled();
   expect(await page.content()).not.toContain("ADMIN_PASSWORD");
 });
 test("authenticated admin shell exposes publishing sections", async ({

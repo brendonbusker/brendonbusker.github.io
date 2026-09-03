@@ -180,8 +180,8 @@ The unit suite covers schemas, URL protocol rejection, slugging, Markdown saniti
 - [x] Security logs exclude secrets and raw IPs, cap retention, and use a keyed IP fingerprint.
 - [x] Admin production source maps are disabled; security does not rely on source secrecy.
 - [x] Public pages are static and remain available during Worker or free-tier exhaustion.
-- [ ] Cloudflare/D1, Turnstile, real origins, repository owner, and secrets require the owner setup above before production login/publishing can pass.
-- [ ] The least-privilege token scope and final Turnstile hostname must be confirmed in their provider dashboards after creation.
+- [x] Cloudflare/D1, Turnstile, production origins, repository owner, and required Worker secrets are configured.
+- [x] The GitHub publishing token is limited to `brendonbusker.github.io` with Contents read/write only, and Turnstile is restricted to the production admin hostname.
 
 ## Current limitations and sensible next steps
 
