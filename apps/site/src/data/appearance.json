@@ -1,7 +1,22 @@
 {
   "schemaVersion": 1,
-  "defaultTheme": "light",
+  "defaultTheme": "midnight",
   "allowVisitorSelection": true,
-  "visitorThemes": ["light", "dark", "midnight", "hacker", "sakura", "system"],
+  "visitorThemes": [
+    "light",
+    "dark",
+    "midnight",
+    "hacker",
+    "sakura",
+    "system",
+    "blueprint",
+    "nord",
+    "dracula",
+    "amber",
+    "solarized",
+    "synthwave",
+    "ocean",
+    "espresso"
+  ],
   "resumeThemeMode": "light"
 }
