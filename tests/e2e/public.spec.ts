@@ -34,6 +34,12 @@ test("project modal supports keyboard, deep links, escape, and history", async (
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
+  await expect(
+    dialog.locator("header.has-image .project-hero-image"),
+  ).toHaveAttribute(
+    "src",
+    /\/uploads\/projects\/ultimate-iv-calculator\/.+\.webp$/,
+  );
   await expect(page).toHaveURL(/project=ultimate-iv-calculator/);
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();
@@ -45,11 +51,10 @@ test("project modal supports keyboard, deep links, escape, and history", async (
   await page.goBack();
   await expect(dialog).not.toBeVisible();
 
-  await page.goto(
-    "http://127.0.0.1:4321/projects/?project=shiny-hunt-tracker",
-  );
+  await page.goto("http://127.0.0.1:4321/projects/?project=shiny-hunt-tracker");
   const shinyDialog = page.getByRole("dialog", { name: "Shiny Hunt Tracker" });
   await expect(shinyDialog).toBeVisible();
+  await expect(shinyDialog.locator(".project-hero-image")).toHaveCount(0);
   await expect(
     shinyDialog.getByRole("link", { name: /Open live project/ }),
   ).toHaveAttribute(

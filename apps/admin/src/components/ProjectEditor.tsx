@@ -137,6 +137,12 @@ export function ProjectEditor() {
     if (item !== undefined) copy.splice(i + d, 0, item);
     set("features", copy);
   };
+  const moveScreenshot = (i: number, d: number) => {
+    const copy = [...value.screenshots];
+    const [item] = copy.splice(i, 1);
+    if (item) copy.splice(i + d, 0, item);
+    set("screenshots", copy);
+  };
   return (
     <div className="workspace-page form-page">
       <header className="command-header">
@@ -213,7 +219,18 @@ export function ProjectEditor() {
       </header>
       {preview ? (
         <div className="project-preview">
-          <article style={{ borderColor: value.accent }}>
+          <article
+            className={value.screenshots[0] ? "has-image" : undefined}
+            style={{ borderColor: value.accent }}
+          >
+            {value.screenshots[0] && (
+              <img
+                className="project-preview-cover"
+                src={value.screenshots[0].src}
+                alt=""
+                aria-hidden="true"
+              />
+            )}
             <div className="preview-icon" style={{ background: value.accent }}>
               ⌗
             </div>
@@ -358,6 +375,11 @@ export function ProjectEditor() {
                 Upload image
               </Button>
             </div>
+            <p className="settings-note">
+              The first screenshot is used as the project modal’s cover image.
+              Use the arrows to choose a different cover, then publish the
+              project.
+            </p>
             {value.screenshots.length === 0 ? (
               <p className="settings-note">
                 No screenshots yet. Images are resized to 2,000 pixels and
@@ -366,7 +388,7 @@ export function ProjectEditor() {
               </p>
             ) : (
               value.screenshots.map((shot, index) => (
-                <div className="repeatable-row" key={shot.src}>
+                <div className="repeatable-row screenshot-row" key={shot.src}>
                   <Input
                     value={shot.src}
                     readOnly
@@ -385,6 +407,18 @@ export function ProjectEditor() {
                         ),
                       )
                     }
+                  />
+                  <Button
+                    icon={<ArrowUp20Regular />}
+                    aria-label="Make screenshot the cover or move it earlier"
+                    disabled={!index}
+                    onClick={() => moveScreenshot(index, -1)}
+                  />
+                  <Button
+                    icon={<ArrowDown20Regular />}
+                    aria-label="Move screenshot later"
+                    disabled={index === value.screenshots.length - 1}
+                    onClick={() => moveScreenshot(index, 1)}
                   />
                   <Button
                     icon={<Delete20Regular />}

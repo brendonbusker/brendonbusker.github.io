@@ -52,7 +52,12 @@ test("authenticated admin shell exposes publishing sections", async ({
     icon: "sparkles",
     accent: "#9a6a22",
     techStack: ["React", "TypeScript"],
-    screenshots: [],
+    screenshots: [
+      {
+        src: "/uploads/projects/shiny-hunt-tracker/cover.webp",
+        alt: "Shiny Hunt Tracker dashboard",
+      },
+    ],
     overview: "A local-first shiny hunting dashboard.",
     why: "Long hunts span many sessions.",
     features: ["Multiple simultaneous hunts"],
@@ -132,4 +137,9 @@ test("authenticated admin shell exposes publishing sections", async ({
   await expect(
     page.getByRole("heading", { name: "Shiny Hunt Tracker" }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Preview" }).click();
+  await expect(page.locator(".project-preview-cover")).toHaveAttribute(
+    "src",
+    "/uploads/projects/shiny-hunt-tracker/cover.webp",
+  );
 });
