@@ -31,6 +31,12 @@ describe("worker security boundaries", () => {
     expect(res.headers.get("content-security-policy")).toContain(
       "frame-ancestors 'none'",
     );
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+  it("revalidates the admin shell instead of serving stale editor code", async () => {
+    const res = await worker.request("/", {}, baseEnv);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-cache");
   });
   it("rejects protected APIs without a session", async () => {
     const res = await worker.request("/api/drafts", {}, baseEnv);

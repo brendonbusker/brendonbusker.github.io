@@ -170,7 +170,11 @@ function securityHeaders(c: any, next: any) {
     );
     c.header(
       "Cache-Control",
-      c.req.path.startsWith("/api/") ? "no-store" : "public, max-age=300",
+      c.req.path.startsWith("/api/")
+        ? "no-store"
+        : c.req.path.startsWith("/assets/")
+          ? "public, max-age=31536000, immutable"
+          : "no-cache",
     );
   });
 }
