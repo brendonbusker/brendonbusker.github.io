@@ -10,6 +10,10 @@ test("homepage, archive, post, projects, resume, and 404 render", async ({
   await expect(page.getByRole("heading", { name: "2026" })).toBeVisible();
   await page.locator(".archive-row h3 a").first().click();
   await expect(page.locator("article.post")).toBeVisible();
+  await page.goto("http://127.0.0.1:4321/projects/");
+  await expect(
+    page.getByRole("heading", { name: "Useful things, built with care." }),
+  ).toBeVisible();
   await page.goto("http://127.0.0.1:4321/resume/");
   await expect(
     page.getByRole("link", { name: /Download PDF/ }),

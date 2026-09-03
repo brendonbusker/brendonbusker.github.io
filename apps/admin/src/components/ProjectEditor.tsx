@@ -15,12 +15,172 @@ import {
   ImageAdd20Regular,
   Send20Regular,
 } from "@fluentui/react-icons";
-import { projectSchema, slugify, type Project } from "@brendon/shared";
+import {
+  projectPageSchema,
+  projectSchema,
+  slugify,
+  type Project,
+  type ProjectPage,
+} from "@brendon/shared";
 import { newProject, seedProject, seedProjects } from "../seed";
 import { useDraft } from "../hooks";
 import { api, draftsApi, publishedApi, type PublishedItem } from "../api";
 import { SaveStatus } from "./SaveStatus";
 import { optimizeImage } from "../media";
+
+const initialProjectPage: ProjectPage = {
+  schemaVersion: 1,
+  eyebrow: "Selected work",
+  headline: "Useful things, built with care.",
+  description:
+    "Applications and experiments that began with a problem worth understanding.",
+};
+
+function ProjectPageEditor({ onBack }: { onBack: () => void }) {
+  const [value, setValue] = useState<ProjectPage>(initialProjectPage);
+  const [source, setSource] = useState<{ path: string; sha: string } | null>(
+    null,
+  );
+  const [loading, setLoading] = useState(true);
+  const [dirty, setDirty] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    publishedApi
+      .one<ProjectPage>("projects-page")
+      .then(({ content, path, sha }) => {
+        if (!alive) return;
+        setValue(projectPageSchema.parse(content));
+        setSource({ path, sha });
+      })
+      .catch((error) => {
+        if (alive)
+          setMessage(
+            error instanceof Error
+              ? error.message
+              : "Could not load the projects page introduction.",
+          );
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const set = (key: keyof ProjectPage, next: string) => {
+    setValue((current) => ({ ...current, [key]: next }));
+    setDirty(true);
+    setMessage("");
+  };
+
+  const publish = async () => {
+    if (!source) return;
+    setPublishing(true);
+    setMessage("");
+    try {
+      const valid = projectPageSchema.parse(value);
+      const result = await draftsApi.publish("projectsPage", valid, {
+        expectedSha: source.sha,
+      });
+      setValue(valid);
+      setSource({ path: result.path, sha: result.contentSha });
+      setDirty(false);
+      setMessage(
+        `Projects page introduction published. Site deployment is in progress. Version ${result.version.slice(0, 8)}.`,
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not publish the projects page introduction.",
+      );
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  return (
+    <div className="workspace-page form-page">
+      <header className="command-header">
+        <div>
+          <p className="page-label">Projects</p>
+          <h1>Projects page introduction</h1>
+          <p className="source-status">
+            {loading
+              ? "Loading current introduction from GitHub…"
+              : source
+                ? "Published introduction loaded from GitHub"
+                : "Introduction could not be loaded"}
+          </p>
+        </div>
+        <div>
+          <Button onClick={onBack}>Back to projects</Button>
+          <Button
+            appearance="primary"
+            icon={<Send20Regular />}
+            onClick={publish}
+            disabled={loading || publishing || !dirty || !source}
+          >
+            {publishing ? "Publishing…" : "Publish introduction"}
+          </Button>
+        </div>
+      </header>
+      <div className="form-grid project-page-copy-editor">
+        <section>
+          <h2>Page copy</h2>
+          <Field label="Eyebrow" required>
+            <Input
+              value={value.eyebrow}
+              onChange={(_, data) => set("eyebrow", data.value)}
+            />
+          </Field>
+          <Field label="Headline" required>
+            <Textarea
+              rows={4}
+              value={value.headline}
+              onChange={(_, data) => set("headline", data.value)}
+            />
+          </Field>
+          <Field label="Supporting description" required>
+            <Textarea
+              rows={4}
+              value={value.description}
+              onChange={(_, data) => set("description", data.value)}
+            />
+          </Field>
+        </section>
+        <section
+          className="project-page-copy-preview"
+          aria-label="Projects page introduction preview"
+        >
+          <p className="page-label">Live preview</p>
+          <div>
+            <p className="preview-eyebrow">{value.eyebrow}</p>
+            <h2>{value.headline}</h2>
+            <p>{value.description}</p>
+          </div>
+        </section>
+      </div>
+      {message && (
+        <div
+          className={
+            /failed|could not|error/i.test(message)
+              ? "publish-message error"
+              : "publish-message"
+          }
+          role="status"
+        >
+          {message}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ProjectEditor() {
   const [contentKey, setContentKey] = useState(seedProject.slug);
   const [published, setPublished] = useState<Array<PublishedItem<Project>>>(
@@ -37,8 +197,7 @@ export function ProjectEditor() {
   );
   const sourceVersion =
     published.find(
-      ({ content }) =>
-        content.slug === contentKey || content.id === contentKey,
+      ({ content }) => content.slug === contentKey || content.id === contentKey,
     )?.sha ?? "";
   const { value, setValue, state, reset, loading } = useDraft<Project>(
     "project",
@@ -47,6 +206,7 @@ export function ProjectEditor() {
     sourceVersion,
   );
   const [preview, setPreview] = useState(false);
+  const [editingPageIntro, setEditingPageIntro] = useState(false);
   const [message, setMessage] = useState("");
   const imageRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -149,6 +309,8 @@ export function ProjectEditor() {
     if (item) copy.splice(i + d, 0, item);
     set("screenshots", copy);
   };
+  if (editingPageIntro)
+    return <ProjectPageEditor onBack={() => setEditingPageIntro(false)} />;
   return (
     <div className="workspace-page form-page">
       <header className="command-header">
@@ -163,6 +325,9 @@ export function ProjectEditor() {
           </p>
         </div>
         <div>
+          <Button onClick={() => setEditingPageIntro(true)}>
+            Edit page introduction
+          </Button>
           <select
             className="project-switcher"
             aria-label="Choose a project to edit"

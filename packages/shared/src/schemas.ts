@@ -48,6 +48,13 @@ export const appearanceSchema = z.object({
   resumeThemeMode: z.enum(["light", "active", "default"]).default("light"),
 });
 
+export const projectPageSchema = z.object({
+  schemaVersion: z.literal(1).default(1),
+  eyebrow: z.string().min(1).max(80),
+  headline: z.string().min(1).max(180),
+  description: z.string().min(1).max(500),
+});
+
 export const siteProfileSchema = z.object({
   schemaVersion: z.literal(1).default(1),
   fullName: z.string().min(1).max(100),
@@ -179,13 +186,21 @@ export const draftSchema = z.object({
     "resume",
     "settings",
     "appearance",
+    "projectsPage",
   ]),
   contentKey: z.string().min(1).max(160),
   payload: z.unknown(),
   updatedAt: z.string().optional(),
 });
 export const publishPayloadSchema = z.object({
-  contentType: z.enum(["post", "project", "homepage", "resume", "appearance"]),
+  contentType: z.enum([
+    "post",
+    "project",
+    "homepage",
+    "resume",
+    "appearance",
+    "projectsPage",
+  ]),
   payload: z.unknown(),
   expectedSha: z.string().optional(),
 });
@@ -193,6 +208,7 @@ export type SiteProfile = z.infer<typeof siteProfileSchema>;
 export type Appearance = z.infer<typeof appearanceSchema>;
 export type PublicThemeId = z.infer<typeof publicThemeSchema>;
 export type PublicThemeChoice = z.infer<typeof publicThemeChoiceSchema>;
+export type ProjectPage = z.infer<typeof projectPageSchema>;
 export type Post = z.infer<typeof postSchema>;
 export type Project = z.infer<typeof projectSchema>;
 export type Resume = z.infer<typeof resumeSchema>;
@@ -212,5 +228,6 @@ export function validateContent(type: string, payload: unknown) {
   if (type === "homepage") return siteProfileSchema.parse(payload);
   if (type === "resume") return resumeSchema.parse(payload);
   if (type === "appearance") return appearanceSchema.parse(payload);
+  if (type === "projectsPage") return projectPageSchema.parse(payload);
   throw new Error("Unsupported content type");
 }

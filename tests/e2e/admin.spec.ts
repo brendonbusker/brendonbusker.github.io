@@ -73,6 +73,13 @@ test("authenticated admin shell exposes publishing sections", async ({
         expectedSha?: string;
       }
     | undefined;
+  let projectPagePublish:
+    | {
+        contentType?: string;
+        payload?: Record<string, unknown>;
+        expectedSha?: string;
+      }
+    | undefined;
   let savedPostBody = "";
   await page.route("**/api/session", (route) =>
     route.fulfill({
@@ -163,15 +170,40 @@ test("authenticated admin shell exposes publishing sections", async ({
       }),
     }),
   );
+  await page.route("**/api/published/projects-page", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        content: {
+          schemaVersion: 1,
+          eyebrow: "Selected work",
+          headline: "Useful things, built with care.",
+          description:
+            "Applications and experiments that began with a problem worth understanding.",
+        },
+        path: "apps/site/src/data/projects-page.json",
+        sha: "f".repeat(40),
+      }),
+    }),
+  );
   await page.route("**/api/publish", (route) => {
-    appearancePublish = route.request().postDataJSON();
+    const request = route.request().postDataJSON() as {
+      contentType?: string;
+      payload?: Record<string, unknown>;
+      expectedSha?: string;
+    };
+    if (request.contentType === "projectsPage") projectPagePublish = request;
+    else appearancePublish = request;
+    const isProjectPage = request.contentType === "projectsPage";
     return route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
         commitUrl: "https://github.test/commit",
         version: "d".repeat(40),
         contentSha: "e".repeat(40),
-        path: "apps/site/src/data/appearance.json",
+        path: isProjectPage
+          ? "apps/site/src/data/projects-page.json"
+          : "apps/site/src/data/appearance.json",
       }),
     });
   });
@@ -290,6 +322,32 @@ test("authenticated admin shell exposes publishing sections", async ({
     "src",
     "/uploads/projects/shiny-hunt-tracker/cover.webp",
   );
+  await page.getByRole("button", { name: "Edit page introduction" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Projects page introduction" }),
+  ).toBeVisible();
+  await page.getByLabel("Eyebrow").fill("Things I make");
+  await page.getByLabel("Headline").fill("Experiments with a purpose.");
+  await page
+    .getByLabel("Supporting description")
+    .fill("Projects that started with a question worth answering.");
+  await expect(
+    page.getByLabel("Projects page introduction preview"),
+  ).toContainText("Experiments with a purpose.");
+  await page.getByRole("button", { name: "Publish introduction" }).click();
+  await expect(
+    page.getByText(/Projects page introduction published\./),
+  ).toBeVisible();
+  expect(projectPagePublish).toMatchObject({
+    contentType: "projectsPage",
+    expectedSha: "f".repeat(40),
+    payload: {
+      eyebrow: "Things I make",
+      headline: "Experiments with a purpose.",
+      description: "Projects that started with a question worth answering.",
+    },
+  });
+  await page.getByRole("button", { name: "Back to projects" }).click();
   await page
     .getByRole("complementary", { name: "Publishing sections" })
     .getByRole("button", { name: "Settings", exact: true })
@@ -323,9 +381,7 @@ test("authenticated admin shell exposes publishing sections", async ({
   await page.getByLabel("Résumé appearance").selectOption("active");
   await page.getByLabel("Dracula", { exact: true }).check();
   await page.getByRole("button", { name: "Publish public themes" }).click();
-  await expect(
-    page.getByText(/Public themes published\./),
-  ).toBeVisible();
+  await expect(page.getByText(/Public themes published\./)).toBeVisible();
   expect(appearancePublish).toMatchObject({
     contentType: "appearance",
     expectedSha: "c".repeat(40),

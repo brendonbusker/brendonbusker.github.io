@@ -5,6 +5,7 @@ import {
   draftSchema,
   isAllowedRepositoryPath,
   postSchema,
+  projectPageSchema,
   projectSchema,
   resumeSchema,
   sanitizeFilename,
@@ -43,7 +44,7 @@ interface Env {
 }
 type Variables = { sessionId: string; csrfHash: string };
 type PublishedType =
-  "homepage" | "resume" | "appearance" | "posts" | "projects";
+  "homepage" | "resume" | "appearance" | "projects-page" | "posts" | "projects";
 type GitHubFile = {
   type: "file";
   path: string;
@@ -601,6 +602,12 @@ app.get("/api/published/:type", async (c) => {
             : appearanceSchema.parse(json);
       return c.json({ content, path: file.path, sha: file.sha });
     }
+    if (type === "projects-page") {
+      const path = "apps/site/src/data/projects-page.json";
+      const file = await githubTextFile(c.env, path);
+      const content = projectPageSchema.parse(JSON.parse(file.text));
+      return c.json({ content, path: file.path, sha: file.sha });
+    }
     if (type === "posts" || type === "projects")
       return c.json({ items: await publishedCollection(c.env, type) });
     return c.json({ error: "Unsupported published content type." }, 404);
@@ -640,6 +647,12 @@ export function serializeContent(
       path: "apps/site/src/data/appearance.json",
       content: JSON.stringify(appearanceSchema.parse(payload), null, 2) + "\n",
       message: "cms: update public theme settings",
+    };
+  if (type === "projectsPage")
+    return {
+      path: "apps/site/src/data/projects-page.json",
+      content: JSON.stringify(projectPageSchema.parse(payload), null, 2) + "\n",
+      message: "cms: update projects page introduction",
     };
   if (type === "post") {
     const p = postSchema.parse({ ...payload, status: "published" });

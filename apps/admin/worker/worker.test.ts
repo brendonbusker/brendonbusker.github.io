@@ -116,6 +116,21 @@ describe("published content parsing", () => {
     });
   });
 
+  it("serializes projects page copy separately from project entries", () => {
+    const serialized = serializeContent("projectsPage", {
+      schemaVersion: 1,
+      eyebrow: "Work",
+      headline: "Things I made.",
+      description: "A growing collection.",
+    });
+    expect(serialized.path).toBe("apps/site/src/data/projects-page.json");
+    expect(JSON.parse(serialized.content)).toMatchObject({
+      eyebrow: "Work",
+      headline: "Things I made.",
+      description: "A growing collection.",
+    });
+  });
+
   it("reads generated post frontmatter and its full body", () => {
     const parsed = parseManagedMarkdown(
       '---\nid: "f3ca8746-060e-4f5f-a70a-776075596c4c"\ntitle: "A note"\nfeatured: true\ncount: 2\ntags: ["one","two"]\n---\n\nFirst paragraph.\n\nSecond paragraph.\n',

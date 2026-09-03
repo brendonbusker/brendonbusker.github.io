@@ -7,6 +7,7 @@ import {
   excerptFromMarkdown,
   isAllowedRepositoryPath,
   postSchema,
+  projectPageSchema,
   resumeSchema,
   sanitizeMarkdown,
   sessionIsExpired,
@@ -15,6 +16,17 @@ import {
 } from ".";
 
 describe("content schemas", () => {
+  it("validates editable projects page copy", () => {
+    expect(
+      projectPageSchema.parse({
+        schemaVersion: 1,
+        eyebrow: "Selected work",
+        headline: "Useful things, built with care.",
+        description: "Applications and experiments.",
+      }).headline,
+    ).toBe("Useful things, built with care.");
+  });
+
   it("accepts a complete site profile and rejects dangerous links", () => {
     const profile = {
       schemaVersion: 1,
@@ -90,8 +102,11 @@ describe("repository paths", () => {
         "apps/site/public/resume/Brendon-Busker-Resume.pdf",
       ),
     ).toBe(true);
+    expect(isAllowedRepositoryPath("apps/site/src/data/appearance.json")).toBe(
+      true,
+    );
     expect(
-      isAllowedRepositoryPath("apps/site/src/data/appearance.json"),
+      isAllowedRepositoryPath("apps/site/src/data/projects-page.json"),
     ).toBe(true);
     expect(isAllowedRepositoryPath(".github/workflows/pages.yml")).toBe(false);
     expect(
