@@ -109,6 +109,12 @@ describe("repository paths", () => {
       isAllowedRepositoryPath("apps/site/src/data/projects-page.json"),
     ).toBe(true);
     expect(isAllowedRepositoryPath(".github/workflows/pages.yml")).toBe(false);
+    expect(isAllowedRepositoryPath("apps/site/src/data/blog-page.json")).toBe(
+      true,
+    );
+    expect(
+      isAllowedRepositoryPath("apps/site/src/data/../blog-page.json"),
+    ).toBe(false);
     expect(
       isAllowedRepositoryPath(
         "apps/site/public/uploads/posts/test/animated.gif",

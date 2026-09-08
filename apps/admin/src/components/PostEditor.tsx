@@ -79,6 +79,7 @@ import { useDraft } from "../hooks";
 import { api, draftsApi, publishedApi, type PublishedItem } from "../api";
 import { optimizeImage } from "../media";
 import { SaveStatus } from "./SaveStatus";
+import { BlogPageEditor } from "./BlogPageEditor";
 
 const PUBLIC_SITE_URL = "https://brendonbusker.github.io";
 const FONT_SIZES = [10, 11, 12, 14, 16, 18, 24, 32, 48];
@@ -190,6 +191,7 @@ function Tool({
   );
 }
 export function PostEditor() {
+  const [editingIntroduction, setEditingIntroduction] = useState(false);
   const firstPost = useMemo(newPost, []);
   const [selected, setSelected] = useState(firstPost.id);
   const [scratchPosts, setScratchPosts] = useState<Record<string, Post>>({
@@ -672,6 +674,8 @@ export function PostEditor() {
     editor.chain().focus().updateAttributes("image", { alt }).run();
     setMessage("Image description updated.");
   };
+  if (editingIntroduction)
+    return <BlogPageEditor onBack={() => setEditingIntroduction(false)} />;
   return (
     <div className="editor-workspace">
       <input
@@ -700,6 +704,11 @@ export function PostEditor() {
             New
           </Button>
         </header>
+        <div className="list-search">
+          <Button onClick={() => setEditingIntroduction(true)}>
+            Edit page introduction
+          </Button>
+        </div>
         <div className="list-search">
           <Input
             placeholder="Search blog posts"

@@ -46,6 +46,7 @@ Published sources:
 - `apps/site/src/data/resume.json` — structured web résumé.
 - `apps/site/src/data/appearance.json` — public theme policy.
 - `apps/site/src/data/projects-page.json` — editable Projects page eyebrow, headline, and description.
+- `apps/site/src/data/blog-page.json` — editable Blog archive eyebrow, headline, and description, shared by `/blog/` and legacy `/notes/`.
 - `apps/site/public/uploads/` — published project and post images.
 - `apps/site/public/resume/Brendon-Busker-Resume.pdf` — stable downloadable résumé PDF.
 - `apps/site/public/og-v2.svg` and `og-v2.png` — editable source and 1200×630 social preview matching the current landing page.
@@ -60,6 +61,7 @@ Published sources:
 - Blog Insert Image accepts animated GIFs. GIF uploads preserve their original bytes, frames, timing, loop settings, and resolution rather than going through the static WebP/canvas optimizer. The existing 6 MB upload limit applies. The Worker validates GIF signatures/basic structure and uses an allowlisted, generated `.gif` destination. Public posts render them with ordinary `<img>` elements. Editor/Preview use trusted local blob URLs until the GitHub Pages image deployment is available; reopening uses the published image URL.
 - Project screenshots persist after reopening. The first screenshot is the public modal cover; screenshots can be reordered or removed before publishing.
 - Projects includes a separate “Edit page introduction” screen for its page-level copy.
+- Blog also has an “Edit page introduction” button above its post search. It loads current published copy, previews the three fields, and publishes with the loaded GitHub SHA. Its initial JSON preserves the previously hard-coded archive copy. Returning to the post editor keeps the selected post and its edits.
 - Site editor loads the latest published homepage data rather than stale seed data.
 
 ### `apps/admin/worker`

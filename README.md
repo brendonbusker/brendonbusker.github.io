@@ -54,6 +54,7 @@ The CMS sections are Home, Posts, Projects, Résumé, Site, and Settings.
 - Project records support ordering, publication state, icons, accent color, story fields, features, technology, URLs, and published media paths. Clicking a public project opens an accessible history-aware dialog at `/projects/?project=slug`.
 - The résumé editor manages structured experience, education, certifications, skill groups, links, and selected work. The HTML résumé and stable PDF are separate, so either can be updated without parsing the other.
 - Homepage fields and harmless site settings publish to validated JSON.
+- In **Blog → Edit page introduction**, change the eyebrow, headline, and supporting description above the archive. Preview the copy and select **Publish introduction**. These fields live separately from posts in `apps/site/src/data/blog-page.json`; both `/blog/` and the legacy `/notes/` archive use them. Reopening loads the latest published version and publishing checks its GitHub SHA to prevent overwriting newer edits.
 
 Drafts stay in D1. Publishing validates the complete payload, derives the repository destination server-side, commits with a human-readable message, and reports that GitHub Pages deployment is in progress. The Worker cannot write `.github/workflows/` or accept an arbitrary repository path.
 

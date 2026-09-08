@@ -54,6 +54,7 @@ export const projectPageSchema = z.object({
   headline: z.string().min(1).max(180),
   description: z.string().min(1).max(500),
 });
+export const blogPageSchema = projectPageSchema;
 
 export const siteProfileSchema = z.object({
   schemaVersion: z.literal(1).default(1),
@@ -187,6 +188,7 @@ export const draftSchema = z.object({
     "settings",
     "appearance",
     "projectsPage",
+    "blogPage",
   ]),
   contentKey: z.string().min(1).max(160),
   payload: z.unknown(),
@@ -200,6 +202,7 @@ export const publishPayloadSchema = z.object({
     "resume",
     "appearance",
     "projectsPage",
+    "blogPage",
   ]),
   payload: z.unknown(),
   expectedSha: z.string().optional(),
@@ -209,6 +212,7 @@ export type Appearance = z.infer<typeof appearanceSchema>;
 export type PublicThemeId = z.infer<typeof publicThemeSchema>;
 export type PublicThemeChoice = z.infer<typeof publicThemeChoiceSchema>;
 export type ProjectPage = z.infer<typeof projectPageSchema>;
+export type BlogPage = z.infer<typeof blogPageSchema>;
 export type Post = z.infer<typeof postSchema>;
 export type Project = z.infer<typeof projectSchema>;
 export type Resume = z.infer<typeof resumeSchema>;
@@ -229,5 +233,6 @@ export function validateContent(type: string, payload: unknown) {
   if (type === "resume") return resumeSchema.parse(payload);
   if (type === "appearance") return appearanceSchema.parse(payload);
   if (type === "projectsPage") return projectPageSchema.parse(payload);
+  if (type === "blogPage") return blogPageSchema.parse(payload);
   throw new Error("Unsupported content type");
 }

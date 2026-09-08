@@ -6,6 +6,7 @@ import {
   isAllowedRepositoryPath,
   postSchema,
   projectPageSchema,
+  blogPageSchema,
   projectSchema,
   resumeSchema,
   sanitizeFilename,
@@ -47,7 +48,13 @@ interface Env {
 }
 type Variables = { sessionId: string; csrfHash: string };
 type PublishedType =
-  "homepage" | "resume" | "appearance" | "projects-page" | "posts" | "projects";
+  | "homepage"
+  | "resume"
+  | "appearance"
+  | "projects-page"
+  | "blog-page"
+  | "posts"
+  | "projects";
 type GitHubFile = {
   type: "file";
   path: string;
@@ -608,10 +615,11 @@ app.get("/api/published/:type", async (c) => {
             : appearanceSchema.parse(json);
       return c.json({ content, path: file.path, sha: file.sha });
     }
-    if (type === "projects-page") {
-      const path = "apps/site/src/data/projects-page.json";
+    if (type === "projects-page" || type === "blog-page") {
+      const path = `apps/site/src/data/${type}.json`;
       const file = await githubTextFile(c.env, path);
-      const content = projectPageSchema.parse(JSON.parse(file.text));
+      const schema = type === "blog-page" ? blogPageSchema : projectPageSchema;
+      const content = schema.parse(JSON.parse(file.text));
       return c.json({ content, path: file.path, sha: file.sha });
     }
     if (type === "posts" || type === "projects")
@@ -659,6 +667,12 @@ export function serializeContent(
       path: "apps/site/src/data/projects-page.json",
       content: JSON.stringify(projectPageSchema.parse(payload), null, 2) + "\n",
       message: "cms: update projects page introduction",
+    };
+  if (type === "blogPage")
+    return {
+      path: "apps/site/src/data/blog-page.json",
+      content: JSON.stringify(blogPageSchema.parse(payload), null, 2) + "\n",
+      message: "cms: update blog page introduction",
     };
   if (type === "post") {
     const p = postSchema.parse(payload);
