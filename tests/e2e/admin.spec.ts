@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import site from "../../apps/site/src/data/site.json";
 test("admin presents a focused login without exposing credentials", async ({
   page,
 }) => {
@@ -25,6 +26,15 @@ test("admin presents a focused login without exposing credentials", async ({
 test("authenticated admin shell exposes publishing sections", async ({
   page,
 }) => {
+  await page.route("**/api/published/homepage", (route) =>
+    route.fulfill({
+      json: {
+        content: site,
+        path: "apps/site/src/data/site.json",
+        sha: "site-sha",
+      },
+    }),
+  );
   const publishedPost = {
     schemaVersion: 1,
     id: "f3ca8746-060e-4f5f-a70a-776075596c4c",

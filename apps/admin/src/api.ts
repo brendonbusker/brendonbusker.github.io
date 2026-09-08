@@ -63,6 +63,7 @@ export const draftsApi = {
       version: string;
       contentSha: string;
       path: string;
+      publishedAt?: string;
     }>("/api/publish", {
       method: "POST",
       body: JSON.stringify({ contentType, payload, ...options }),

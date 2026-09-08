@@ -74,7 +74,7 @@ export const postSchema = z.object({
   id: z.string().uuid(),
   title: z.string().min(1).max(180),
   slug: slugSchema,
-  publishedAt: isoDateSchema,
+  publishedAt: z.union([z.iso.date(), z.iso.datetime({ offset: true })]),
   updatedAt: isoDateSchema,
   excerpt: z.string().max(320).optional().default(""),
   body: z.string().min(1).max(250_000),

@@ -49,6 +49,7 @@ The Vite server proxies `/api` to `http://127.0.0.1:8787`. `.dev.vars`, `.env`, 
 The CMS sections are Home, Posts, Projects, Résumé, Site, and Settings.
 
 - Posts use a Word-inspired Tiptap editor with semantic headings, text emphasis, lists, quotes, code, links, images, tables, undo/redo, `Ctrl/Cmd+S`, debounced autosave, preview, and publish status.
+- New posts receive their publication date and time automatically when Publish reaches the server, using the published site timezone. Reopen a published post to edit its date/time; ordinary edits preserve its original timestamp. The homepage, archives, adjacent-post navigation, and RSS sort by the full timestamp. Times display with the timezone, and time-only edits preserve post URLs. Central abbreviations such as `CST` use `America/Chicago` with daylight-saving adjustments.
 - Project records support ordering, publication state, icons, accent color, story fields, features, technology, URLs, and published media paths. Clicking a public project opens an accessible history-aware dialog at `/projects/?project=slug`.
 - The résumé editor manages structured experience, education, certifications, skill groups, links, and selected work. The HTML résumé and stable PDF are separate, so either can be updated without parsing the other.
 - Homepage fields and harmless site settings publish to validated JSON.

@@ -77,6 +77,10 @@ Published sources:
 
 ## Publishing model
 
+Blog publication timestamps now include the time and numeric UTC offset (for example, `2026-09-07T23:59:59-05:00`). The Worker captures its request time on first publication using the current published site timezone; `CST`, `CDT`, and `CT` settings resolve to `America/Chicago` with daylight-saving support. New-post dates/times are automatic. Reopened published posts expose an editable date/time field; ordinary edits retain the original publication time. Older date-only drafts cannot erase a saved timestamp.
+
+Public sorting and RSS use the actual timestamp. Blog URLs and archive years use the stored local date, never the UTC date, so adding/changing only a time preserves the dated URL. Date-only legacy content remains supported without displaying an invented time. Timestamp strings in Markdown must be quoted so YAML preserves the numeric offset. The two existing posts were backfilled from their first CMS publish commits: `4ae4a2c` (first post, September 3 at 11:23:36 Central) and `767428c` (TikTok post, September 3 at 14:57:30 Central). Their bodies, slugs, and dates were preserved.
+
 1. The CMS loads the current published file and its GitHub SHA.
 2. Private drafts autosave to D1 where applicable.
 3. Publish validates the complete payload and derives the repository path server-side.
@@ -222,4 +226,3 @@ These are not necessarily current bugs; confirm priority with the user before im
 ```text
 Continue development of my production personal website and private CMS in this repository. First read PROJECT_HANDOFF.md, then use kickoff.txt as the original product specification and README.md for setup details. Inspect the current repository and production state before making changes. Always fetch origin/main before editing and again before committing because the production CMS writes my published content directly to main; preserve every CMS commit and never replace current content with seed data. The public site is live on GitHub Pages and the private admin/API are live on Cloudflare. Work autonomously, implement requested changes end to end, run proportional type/build/unit/browser checks, deploy the affected service when appropriate, and verify the live result. Ask only when a missing choice would materially change the product.
 ```
-

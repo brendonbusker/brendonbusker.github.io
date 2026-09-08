@@ -2,7 +2,7 @@
 id: "3b1f7d4b-d695-4b02-9f8f-977c06e84b1e"
 title: "my very first post"
 slug: "first-post"
-publishedAt: 2026-09-03
+publishedAt: "2026-09-03T11:23:36-05:00"
 updatedAt: 2026-09-03
 excerpt: "What's he building in there............"
 status: published

@@ -67,6 +67,11 @@ import {
   excerptFromMarkdown,
   postSchema,
   slugify,
+  publishingTimezone,
+  zonedTimestamp,
+  timestampFromLocal,
+  formatPostDate,
+  type SiteProfile,
   type Post,
 } from "@brendon/shared";
 import { newPost } from "../seed";
@@ -194,6 +199,9 @@ export function PostEditor() {
   const [publishing, setPublishing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState("");
+  const [timezone, setTimezone] = useState("");
+  const [publicationInput, setPublicationInput] = useState("");
+  const [dateError, setDateError] = useState("");
   const imageRef = useRef<HTMLInputElement>(null);
   const loadedRevision = useRef(-1);
   const objectUrls = useRef<string[]>([]);
@@ -219,12 +227,35 @@ export function PostEditor() {
     loading,
     revision,
   } = useDraft<Post>("post", selected, initial, sourceVersion);
+  const publishedSource = publishedPosts.find(
+    ({ content }) => content.id === selected,
+  );
+  const effectivePublishedAt =
+    !post.publishedAt.includes("T") &&
+    publishedSource?.content.publishedAt.startsWith(post.publishedAt)
+      ? publishedSource.content.publishedAt
+      : post.publishedAt;
+  useEffect(() => {
+    if (!timezone) return;
+    // Refresh on draft hydration or publication, not while an incomplete date is being typed.
+    setPublicationInput(
+      effectivePublishedAt.includes("T")
+        ? zonedTimestamp(new Date(effectivePublishedAt), timezone).slice(0, 19)
+        : `${effectivePublishedAt}T00:00:00`,
+    );
+    setDateError("");
+  }, [revision, timezone, selected]);
   useEffect(() => {
     let alive = true;
-    Promise.all([publishedApi.collection<Post>("posts"), draftsApi.list()])
-      .then(([{ items }, { drafts }]) => {
+    Promise.all([
+      publishedApi.collection<Post>("posts"),
+      draftsApi.list(),
+      publishedApi.one<SiteProfile>("homepage"),
+    ])
+      .then(([{ items }, { drafts }, { content: profile }]) => {
         if (!alive) return;
         setPublishedPosts(items);
+        setTimezone(publishingTimezone(profile.timezone));
         setDraftPosts(
           drafts
             .filter(({ content_type }) => content_type === "post")
@@ -330,6 +361,7 @@ export function PostEditor() {
     try {
       const valid = postSchema.parse({
         ...post,
+        publishedAt: effectivePublishedAt,
         status: "published",
         slug: post.slug || slugify(post.title),
         excerpt: post.excerpt || excerptFromMarkdown(post.body),
@@ -341,6 +373,7 @@ export function PostEditor() {
         expectedSha: source?.sha || undefined,
         targetPath: source?.path || undefined,
       });
+      valid.publishedAt = result.publishedAt ?? valid.publishedAt;
       await draftsApi.remove("post", selected);
       const nextItem = {
         content: valid,
@@ -423,7 +456,10 @@ export function PostEditor() {
           key: item.content.id,
           content: item.content,
           status: "Published" as const,
-          date: item.content.publishedAt.slice(0, 10),
+          date: formatPostDate(
+            item.content.publishedAt,
+            timezone || "America/Chicago",
+          ),
         });
     }
     if (!entries.some(({ key }) => key === selected))
@@ -439,7 +475,7 @@ export function PostEditor() {
           `${content.title} ${content.excerpt}`.toLowerCase().includes(query),
         )
       : entries;
-  }, [draftPosts, post, publishedPosts, search, selected]);
+  }, [draftPosts, post, publishedPosts, search, selected, timezone]);
   const askLink = () => {
     const href = prompt("Link URL (https:// or mailto:)");
     if (href)
@@ -698,7 +734,13 @@ export function PostEditor() {
               icon={<Send20Regular />}
               onClick={publish}
               disabled={
-                publishing || deleting || syncing || loading || !post.title
+                publishing ||
+                deleting ||
+                syncing ||
+                loading ||
+                !post.title ||
+                !timezone ||
+                !!dateError
               }
             >
               {publishing ? "Publishing…" : "Publish"}
@@ -737,13 +779,47 @@ export function PostEditor() {
             />
           </Field>
           <div className="metadata-row">
-            <Field label="Post date">
-              <Input
-                type="date"
-                value={post.publishedAt.slice(0, 10)}
-                onChange={(_, d) => setField("publishedAt", d.value)}
-              />
-            </Field>
+            {publishedSource ? (
+              <Field
+                label="Publication date and time"
+                hint={timezone}
+                validationMessage={dateError}
+                validationState={dateError ? "error" : "none"}
+              >
+                <Input
+                  type="datetime-local"
+                  step={1}
+                  value={publicationInput}
+                  onChange={(_, d) => {
+                    setPublicationInput(d.value);
+                    try {
+                      setField(
+                        "publishedAt",
+                        timestampFromLocal(
+                          d.value,
+                          timezone,
+                          effectivePublishedAt,
+                        ),
+                      );
+                      setDateError("");
+                    } catch (error) {
+                      setDateError(
+                        error instanceof Error
+                          ? error.message
+                          : "Invalid publication time.",
+                      );
+                    }
+                  }}
+                />
+              </Field>
+            ) : (
+              <Field label="Publication date and time">
+                <p>
+                  Set automatically when you publish
+                  {timezone ? ` (${timezone})` : ""}.
+                </p>
+              </Field>
+            )}
             <Field label="Slug">
               <Input
                 value={post.slug}
@@ -1192,7 +1268,14 @@ export function PostEditor() {
         {preview && (
           <div className="preview-canvas">
             <article>
-              <p className="preview-date">{post.publishedAt}</p>
+              <p className="preview-date">
+                {publishedSource
+                  ? formatPostDate(
+                      effectivePublishedAt,
+                      timezone || "America/Chicago",
+                    )
+                  : "Date and time will be set when published."}
+              </p>
               <h1>{post.title || "Untitled post"}</h1>
               <p className="preview-dek">{post.excerpt}</p>
               <div

@@ -1,15 +1,21 @@
 ---
 import { getCollection, render } from 'astro:content';
+import { postUrl, formatPostDate } from '@brendon/shared';
+import site from '../../../../../data/site.json';
 import BaseLayout from '../../../../../layouts/BaseLayout.astro';
 export async function getStaticPaths() {
-  const posts = (await getCollection('posts', ({data}) => data.status === 'published')).sort((a,b)=>+a.data.publishedAt-+b.data.publishedAt);
-  return posts.map((post,index) => { const d=post.data.publishedAt; const p=(entry:typeof post|undefined)=>entry?`/blog/${entry.data.publishedAt.getUTCFullYear()}/${String(entry.data.publishedAt.getUTCMonth()+1).padStart(2,'0')}/${String(entry.data.publishedAt.getUTCDate()).padStart(2,'0')}/${entry.data.slug}/`:undefined; return { params:{year:String(d.getUTCFullYear()),month:String(d.getUTCMonth()+1).padStart(2,'0'),day:String(d.getUTCDate()).padStart(2,'0'),slug:post.data.slug}, props:{post,previous:posts[index-1],next:posts[index+1],previousUrl:p(posts[index-1]),nextUrl:p(posts[index+1])} }; });
+  const posts = (await getCollection('posts', ({data}) => data.status === 'published')).sort((a,b)=>Date.parse(a.data.publishedAt)-Date.parse(b.data.publishedAt));
+  return posts.map((post,index) => {
+    const [year, month, day] = post.data.publishedAt.slice(0,10).split('-');
+    const url = (entry: typeof post | undefined) => entry ? postUrl(entry.data.publishedAt, entry.data.slug) : undefined;
+    return { params: {year, month, day, slug:post.data.slug}, props: {post, previous:posts[index-1], next:posts[index+1], previousUrl:url(posts[index-1]), nextUrl:url(posts[index+1])} };
+  });
 }
 const { post, previous, next, previousUrl, nextUrl } = Astro.props;
 const { Content } = await render(post);
-const date = post.data.publishedAt.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric',timeZone:'UTC'});
+const date = formatPostDate(post.data.publishedAt, site.timezone);
 ---
 <BaseLayout title={`${post.data.title} — Brendon Busker`} description={post.data.excerpt} article current="blog">
-  <article class="post"><header><p class="eyebrow"><a href="/blog/">Blog</a> / <time datetime={post.data.publishedAt.toISOString()}>{date}</time></p><h1>{post.data.title}</h1>{post.data.excerpt && <p class="dek">{post.data.excerpt}</p>}</header><div class="prose"><Content /></div></article>
+  <article class="post"><header><p class="eyebrow"><a href="/blog/">Blog</a> / <time datetime={post.data.publishedAt}>{date}</time></p><h1>{post.data.title}</h1>{post.data.excerpt && <p class="dek">{post.data.excerpt}</p>}</header><div class="prose"><Content /></div></article>
   <nav class="post-nav" aria-label="Adjacent posts"><div>{previous && <><span>Previous</span><a href={previousUrl}>{previous.data.title}</a></>}</div><div>{next && <><span>Next</span><a href={nextUrl}>{next.data.title}</a></>}</div></nav>
 </BaseLayout>

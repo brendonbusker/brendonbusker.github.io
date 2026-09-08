@@ -14,6 +14,7 @@ import {
   timingSafeEqualText,
   validateContent,
   escapeYaml,
+  zonedTimestamp,
 } from "@brendon/shared";
 
 interface RateLimiter {
@@ -583,7 +584,7 @@ async function publishedCollection(env: Env, type: "posts" | "projects") {
       "publishedAt" in right.content
         ? right.content.publishedAt
         : right.content.updatedAt;
-    return rightDate.localeCompare(leftDate);
+    return Date.parse(rightDate) - Date.parse(leftDate);
   });
 }
 
@@ -657,7 +658,7 @@ export function serializeContent(
   if (type === "post") {
     const p = postSchema.parse({ ...payload, status: "published" });
     const date = p.publishedAt.slice(0, 10);
-    const content = `---\nid: ${escapeYaml(p.id)}\ntitle: ${escapeYaml(p.title)}\nslug: ${escapeYaml(p.slug)}\npublishedAt: ${date}\nupdatedAt: ${p.updatedAt.slice(0, 10)}\nexcerpt: ${escapeYaml(p.excerpt || "")}\nstatus: published\n---\n\n${sanitizePostBody(p.body)}\n`;
+    const content = `---\nid: ${escapeYaml(p.id)}\ntitle: ${escapeYaml(p.title)}\nslug: ${escapeYaml(p.slug)}\npublishedAt: ${escapeYaml(p.publishedAt)}\nupdatedAt: ${escapeYaml(p.updatedAt)}\nexcerpt: ${escapeYaml(p.excerpt || "")}\nstatus: published\n---\n\n${sanitizePostBody(p.body)}\n`;
     return {
       path: targetPath || `apps/site/src/content/posts/${date}-${p.slug}.md`,
       content,
@@ -681,6 +682,7 @@ async function githubFile(
   content: Uint8Array | string,
   message: string,
   expectedSha?: string,
+  createOnly = false,
 ) {
   if (!isAllowedRepositoryPath(path))
     throw new Error("Repository path rejected");
@@ -699,6 +701,10 @@ async function githubFile(
   if (expectedSha && current?.sha !== expectedSha)
     throw new Error(
       "The published file changed since editing began. Refresh before overwriting.",
+    );
+  if (createOnly && current)
+    throw new Error(
+      "A post already exists at this destination. Reopen it before editing.",
     );
   const bytes = typeof content === "string" ? enc.encode(content) : content;
   const response = await fetch(base, {
@@ -812,6 +818,7 @@ app.delete("/api/published/posts", async (c) => {
 });
 
 app.post("/api/publish", async (c) => {
+  const requestedAt = new Date();
   try {
     const body = await c.req.json<{
       contentType: string;
@@ -819,7 +826,7 @@ app.post("/api/publish", async (c) => {
       expectedSha?: string;
       targetPath?: string;
     }>();
-    const valid = validateContent(body.contentType, body.payload);
+    let valid = validateContent(body.contentType, body.payload);
     if (body.targetPath) {
       const expectedPrefix =
         body.contentType === "post"
@@ -838,6 +845,32 @@ app.post("/api/publish", async (c) => {
       body.contentType === "post" || body.contentType === "project"
         ? body.targetPath
         : undefined;
+    if (body.contentType === "post") {
+      const post = postSchema.parse(valid);
+      if (targetPath) {
+        if (!body.expectedSha)
+          throw new Error("The published post version is required.");
+        const existing = await githubTextFile(c.env, targetPath);
+        const saved = parseManagedMarkdown(existing.text);
+        if (saved.data.id !== post.id)
+          throw new Error("Published post identity does not match.");
+        // Date-only drafts from an older editor must not erase a saved timestamp.
+        if (
+          !post.publishedAt.includes("T") &&
+          typeof saved.data.publishedAt === "string" &&
+          saved.data.publishedAt.includes("T")
+        )
+          post.publishedAt = saved.data.publishedAt;
+      } else {
+        const profile = await githubTextFile(
+          c.env,
+          "apps/site/src/data/site.json",
+        );
+        const { timezone } = siteProfileSchema.parse(JSON.parse(profile.text));
+        post.publishedAt = zonedTimestamp(requestedAt, timezone);
+      }
+      valid = { ...post, updatedAt: requestedAt.toISOString() };
+    }
     const item = serializeContent(body.contentType, valid, targetPath);
     const result = await githubFile(
       c.env,
@@ -845,12 +878,16 @@ app.post("/api/publish", async (c) => {
       item.content,
       item.message,
       body.expectedSha,
+      body.contentType === "post" && !targetPath,
     );
     return c.json({
       commitUrl: result.commit.html_url,
       version: result.commit.sha,
       contentSha: result.content.sha,
       path: result.content.path,
+      ...(body.contentType === "post"
+        ? { publishedAt: postSchema.parse(valid).publishedAt }
+        : {}),
     });
   } catch (error) {
     const id = crypto.randomUUID();
