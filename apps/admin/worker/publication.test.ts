@@ -45,7 +45,7 @@ describe("publication API timestamps", () => {
       expires_at: "2026-09-08T05:30:00Z",
       absolute_expires_at: "2026-09-08T12:00:00Z",
     };
-    const env: any = {
+    const env = {
       ADMIN_ORIGIN: "https://admin.example.com",
       SESSION_IDLE_MINUTES: "45",
       SESSION_ABSOLUTE_HOURS: "8",
@@ -114,7 +114,11 @@ describe("publication API timestamps", () => {
       },
       env,
     );
-    return { response, writes, data: (await response.json()) as any };
+    return {
+      response,
+      writes,
+      data: (await response.json()) as { path: string; publishedAt: string },
+    };
   }
 
   it("uses the server publish instant instead of the draft date and returns it to the editor", async () => {

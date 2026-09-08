@@ -159,7 +159,10 @@ Published content and each résumé PDF version live in Git history. Restore an 
 
 ## Validation
 
+ESLint checks JavaScript, TypeScript, React hooks/Fast Refresh, and Astro components/scripts using `eslint.config.mjs`. Generated output and test reports are excluded. Lint warnings fail the command, and both deployment workflows run it before deploying. Keep type checking as a separate check.
+
 ```bash
+pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build

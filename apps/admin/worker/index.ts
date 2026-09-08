@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context, type Next } from "hono";
 import sanitizeHtml from "sanitize-html";
 import {
   appearanceSchema,
@@ -159,7 +159,10 @@ async function securityEvent(
     /* Security logging must not break the protected action. */
   }
 }
-function securityHeaders(c: any, next: any) {
+function securityHeaders(
+  c: Context<{ Bindings: Env; Variables: Variables }>,
+  next: Next,
+) {
   return next().then(() => {
     c.header("X-Content-Type-Options", "nosniff");
     c.header("Referrer-Policy", "no-referrer");
@@ -630,7 +633,7 @@ app.get("/api/published/:type", async (c) => {
 
 export function serializeContent(
   type: string,
-  payload: any,
+  payload: unknown,
   targetPath?: string,
 ) {
   if (type === "homepage")
@@ -658,7 +661,7 @@ export function serializeContent(
       message: "cms: update projects page introduction",
     };
   if (type === "post") {
-    const p = postSchema.parse({ ...payload, status: "published" });
+    const p = postSchema.parse(payload);
     const date = p.publishedAt.slice(0, 10);
     const content = `---\nid: ${escapeYaml(p.id)}\ntitle: ${escapeYaml(p.title)}\nslug: ${escapeYaml(p.slug)}\npublishedAt: ${escapeYaml(p.publishedAt)}\nupdatedAt: ${escapeYaml(p.updatedAt)}\nexcerpt: ${escapeYaml(p.excerpt || "")}\nstatus: published\n---\n\n${sanitizePostBody(p.body)}\n`;
     return {

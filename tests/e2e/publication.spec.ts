@@ -1,12 +1,18 @@
 import { expect, test } from "@playwright/test";
 import { readdirSync, readFileSync } from "node:fs";
+import type { Post } from "@brendon/shared";
+import type { PublishedItem } from "../../apps/admin/src/api";
 import site from "../../apps/site/src/data/site.json";
 
 test("new posts receive server time, then preserve it or allow corrections when reopened", async ({
   page,
 }) => {
-  let published: any;
-  const requests: any[] = [];
+  let published: PublishedItem<Post> | undefined;
+  const requests: Array<{
+    payload: Post;
+    targetPath?: string;
+    expectedSha?: string;
+  }> = [];
   const drafts = new Map<string, unknown>();
   await page.route("**/api/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;

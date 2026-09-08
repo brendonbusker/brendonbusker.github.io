@@ -15,7 +15,7 @@ const db = {
     all: async () => ({ results: [] }),
   }),
 };
-const baseEnv: any = {
+const baseEnv = {
   DB: db,
   ASSETS: { fetch: () => new Response("asset") },
   LOGIN_RATE_LIMITER: { limit: async () => ({ success: true }) },

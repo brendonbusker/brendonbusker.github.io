@@ -54,7 +54,7 @@ const imageUrl = new URL(image, Astro.site);
         };
         window.setSiteThemePreference = (choice) => {
           preference = choice === 'default' || allowed.has(choice) ? choice : 'default';
-          try { preference === 'default' ? localStorage.removeItem(storageKey) : localStorage.setItem(storageKey, preference); } catch {}
+          try { if (preference === 'default') localStorage.removeItem(storageKey); else localStorage.setItem(storageKey, preference); } catch { /* Storage can be unavailable in private browsing. */ }
           apply();
         };
         matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {

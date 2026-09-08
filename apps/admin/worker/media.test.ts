@@ -21,7 +21,7 @@ describe("GIF publishing", () => {
       expires_at: new Date(now + 3600000).toISOString(),
       absolute_expires_at: new Date(now + 7200000).toISOString(),
     };
-    const env: any = {
+    const env = {
       ADMIN_ORIGIN: "https://admin.example.com",
       SESSION_IDLE_MINUTES: "45",
       IP_HASH_SECRET: "test",
@@ -72,7 +72,11 @@ describe("GIF publishing", () => {
       },
       env,
     );
-    return { response, writes, data: (await response.json()) as any };
+    return {
+      response,
+      writes,
+      data: (await response.json()) as { path: string; publishedAt: string },
+    };
   }
   it("publishes exact animated bytes to a generated GIF path and preserves its image markup", async () => {
     const { response, writes, data } = await upload(gif, "untrusted.png");

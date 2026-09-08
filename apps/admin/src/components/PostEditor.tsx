@@ -209,6 +209,7 @@ export function PostEditor() {
   const [message, setMessage] = useState("");
   const [timezone, setTimezone] = useState("");
   const [publicationInput, setPublicationInput] = useState("");
+  const publicationInputScope = useRef("");
   const [dateError, setDateError] = useState("");
   const imageRef = useRef<HTMLInputElement>(null);
   const loadedRevision = useRef(-1);
@@ -247,13 +248,16 @@ export function PostEditor() {
   useEffect(() => {
     if (!timezone) return;
     // Refresh on draft hydration or publication, not while an incomplete date is being typed.
+    const scope = `${selected}:${revision}:${timezone}`;
+    if (publicationInputScope.current === scope) return;
+    publicationInputScope.current = scope;
     setPublicationInput(
       effectivePublishedAt.includes("T")
         ? zonedTimestamp(new Date(effectivePublishedAt), timezone).slice(0, 19)
         : `${effectivePublishedAt}T00:00:00`,
     );
     setDateError("");
-  }, [revision, timezone, selected]);
+  }, [effectivePublishedAt, revision, timezone, selected]);
   useEffect(() => {
     let alive = true;
     Promise.all([
@@ -1103,13 +1107,14 @@ export function PostEditor() {
                       defaultValue="p"
                       onChange={(event) => {
                         const value = event.target.value;
-                        value === "p"
-                          ? editor?.chain().focus().setParagraph().run()
-                          : editor
-                              ?.chain()
-                              .focus()
-                              .setHeading({ level: +value as 1 | 2 | 3 })
-                              .run();
+                        if (value === "p")
+                          editor?.chain().focus().setParagraph().run();
+                        else
+                          editor
+                            ?.chain()
+                            .focus()
+                            .setHeading({ level: +value as 1 | 2 | 3 })
+                            .run();
                       }}
                     >
                       <option value="p">Paragraph</option>

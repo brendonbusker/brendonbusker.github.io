@@ -1,5 +1,7 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { readFileSync } from "node:fs";
+import type { Post } from "@brendon/shared";
+import type { PublishedItem } from "../../apps/admin/src/api";
 import site from "../../apps/site/src/data/site.json";
 import { sanitizePostBody } from "../../apps/admin/worker/index";
 
@@ -26,7 +28,7 @@ async function expectAnimation(image: Locator) {
 test("GIF stays animated after upload, preview, reopening and public rendering", async ({
   page,
 }) => {
-  let published: any;
+  let published: PublishedItem<Post> | undefined;
   let uploaded: Buffer | undefined;
   const drafts = new Map<string, unknown>();
   await page.route("**/api/**", async (route) => {

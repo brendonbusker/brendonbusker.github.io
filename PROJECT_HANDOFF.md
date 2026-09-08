@@ -132,6 +132,7 @@ From the repository root:
 
 ```bash
 pnpm install
+pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
@@ -146,7 +147,7 @@ Local URLs:
 
 Current automated coverage includes shared schemas/security, Worker security boundaries and serialization, public routes, all public palettes, theme persistence and résumé policy, mobile navigation, project dialogs/deep links, admin login presentation, published content loading/editing, rich editor image behavior, post deletion, Projects page copy publishing, and public theme publishing.
 
-Known tooling caveat: `pnpm lint` currently fails before linting because ESLint 9 expects an `eslint.config.js|mjs|cjs` file and the repository does not yet contain one. Type checking, builds, unit tests, and Playwright are the meaningful passing gates until that configuration is added.
+`pnpm lint` is a required check using the ESLint 9 flat configuration in `eslint.config.mjs`. It covers JavaScript, TypeScript, React hooks/Fast Refresh, Astro components and their scripts, and tests. Generated output is ignored; warnings fail the command. Both deployment workflows run lint before building/deploying. `eslint-plugin-astro` stays on the ESLint 9-compatible 1.x line; newer major versions require ESLint 10. Type checking remains a separate check.
 
 ## Deployment
 
@@ -215,7 +216,6 @@ Admin:
 
 These are not necessarily current bugs; confirm priority with the user before implementing:
 
-- Add ESLint 9 flat configuration so `pnpm lint` becomes a real gate.
 - Generate unique social previews for individual blog posts and projects.
 - Add an admin-controlled default Open Graph asset if desired.
 - Add a true PDF résumé generator or upload/version workflow while keeping the stable public PDF URL.
