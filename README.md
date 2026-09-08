@@ -1,5 +1,7 @@
 # Brendon Busker — personal site and publishing CMS
 
+Agent/model transitions should begin with [`PROJECT_HANDOFF.md`](./PROJECT_HANDOFF.md), then use `kickoff.txt` for the original product specification.
+
 This repository contains two deliberately different products:
 
 - `apps/site`: a warm, editorial Astro website that is statically generated and hosted by GitHub Pages. Its homepage, notes, projects, résumé, RSS feed, sitemap, and permanent post URLs continue to work even if Cloudflare is unavailable.
