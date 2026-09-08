@@ -3,3 +3,4 @@ export * from './security';
 export * from './markdown';
 export * from './auth';
 export * from './dates';
+export * from './media';

@@ -15,6 +15,8 @@ import {
   validateContent,
   escapeYaml,
   zonedTimestamp,
+  hasGifSignature,
+  MAX_IMAGE_BYTES,
 } from "@brendon/shared";
 
 interface RateLimiter {
@@ -901,6 +903,14 @@ app.post("/api/publish", async (c) => {
 });
 
 function detectImage(bytes: Uint8Array) {
+  if (
+    hasGifSignature(bytes) &&
+    bytes.length >= 14 &&
+    (bytes[6] || bytes[7]) &&
+    (bytes[8] || bytes[9]) &&
+    bytes[bytes.length - 1] === 0x3b
+  )
+    return { mime: "image/gif", ext: "gif" };
   if (bytes[0] === 0xff && bytes[1] === 0xd8)
     return { mime: "image/jpeg", ext: "jpg" };
   if (bytes[0] === 0x89 && String.fromCharCode(...bytes.slice(1, 4)) === "PNG")
@@ -927,13 +937,16 @@ app.post("/api/publish/media/:kind/:slug", async (c) => {
   const alt = String(data.get("alt") || "").trim();
   if (!(file instanceof File) || !alt)
     return c.json({ error: "An image and alt text are required." }, 400);
-  if (file.size > 6_000_000)
+  if (file.size > MAX_IMAGE_BYTES)
     return c.json({ error: "Image must be smaller than 6 MB." }, 413);
   const bytes = new Uint8Array(await file.arrayBuffer());
   const detected = detectImage(bytes);
   if (!detected)
     return c.json(
-      { error: "Unsupported image. Use JPEG, PNG, WebP, or AVIF." },
+      {
+        error:
+          "Unsupported or invalid image. Use JPEG, PNG, WebP, AVIF, or GIF.",
+      },
       415,
     );
   const filename = `${Date.now()}-${sanitizeFilename(crypto.randomUUID())}.${detected.ext}`;

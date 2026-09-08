@@ -110,6 +110,19 @@ describe("repository paths", () => {
     ).toBe(true);
     expect(isAllowedRepositoryPath(".github/workflows/pages.yml")).toBe(false);
     expect(
+      isAllowedRepositoryPath(
+        "apps/site/public/uploads/posts/test/animated.gif",
+      ),
+    ).toBe(true);
+    expect(
+      isAllowedRepositoryPath(
+        "apps/site/public/uploads/posts/test/animated.gif.html",
+      ),
+    ).toBe(false);
+    expect(
+      isAllowedRepositoryPath("apps/site/public/uploads/posts/../animated.gif"),
+    ).toBe(false);
+    expect(
       isAllowedRepositoryPath("apps/site/src/content/posts/../config.md"),
     ).toBe(false);
   });

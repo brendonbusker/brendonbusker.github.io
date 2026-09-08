@@ -57,6 +57,7 @@ Published sources:
 - Sections: Home, Blog, Projects, Résumé, Site, and Settings.
 - Tiptap/ProseMirror blog editor with debounced D1 autosave, formatting ribbon, clipboard/font/paragraph/insert controls, tables, uploaded image previews, resizing, and image layouts including inline, full, left/right wrap, behind, and front.
 - Published blog entries can be reopened, edited, republished, or deleted with confirmation and optimistic SHA checks.
+- Blog Insert Image accepts animated GIFs. GIF uploads preserve their original bytes, frames, timing, loop settings, and resolution rather than going through the static WebP/canvas optimizer. The existing 6 MB upload limit applies. The Worker validates GIF signatures/basic structure and uses an allowlisted, generated `.gif` destination. Public posts render them with ordinary `<img>` elements. Editor/Preview use trusted local blob URLs until the GitHub Pages image deployment is available; reopening uses the published image URL.
 - Project screenshots persist after reopening. The first screenshot is the public modal cover; screenshots can be reordered or removed before publishing.
 - Projects includes a separate “Edit page introduction” screen for its page-level copy.
 - Site editor loads the latest published homepage data rather than stale seed data.

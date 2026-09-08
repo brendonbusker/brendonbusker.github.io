@@ -128,7 +128,10 @@ function publicAssetUrl(src: string) {
   return new URL(src, PUBLIC_SITE_URL).href;
 }
 
-function bodyToEditorHtml(body: string) {
+function bodyToEditorHtml(
+  body: string,
+  localImages?: ReadonlyMap<string, string>,
+) {
   const html = /^\s*</.test(body) ? body : (marked.parse(body) as string);
   const document = new DOMParser().parseFromString(
     DOMPurify.sanitize(html),
@@ -136,7 +139,12 @@ function bodyToEditorHtml(body: string) {
   );
   document.querySelectorAll("img").forEach((image) => {
     const src = image.getAttribute("src");
-    if (src) image.setAttribute("src", publicAssetUrl(src));
+    const local = localImages?.get(
+      image.getAttribute("data-cms-path") || src || "",
+    );
+    // Restore only blob URLs created by this editor after sanitizing the markup.
+    if (local) image.setAttribute("src", local);
+    else if (src) image.setAttribute("src", publicAssetUrl(src));
   });
   return document.body.innerHTML;
 }
@@ -205,6 +213,7 @@ export function PostEditor() {
   const imageRef = useRef<HTMLInputElement>(null);
   const loadedRevision = useRef(-1);
   const objectUrls = useRef<string[]>([]);
+  const uploadedPreviews = useRef(new Map<string, string>());
   const formatBrush = useRef<Record<string, unknown> | null>(null);
   const initial = useMemo(
     () =>
@@ -322,7 +331,9 @@ export function PostEditor() {
       Subscript,
       Superscript,
     ],
-    content: post.body ? bodyToEditorHtml(post.body) : "<p>Start writing…</p>",
+    content: post.body
+      ? bodyToEditorHtml(post.body, uploadedPreviews.current)
+      : "<p>Start writing…</p>",
     editorProps: {
       attributes: { class: "document-surface", "aria-label": "Post body" },
     },
@@ -341,7 +352,9 @@ export function PostEditor() {
       return;
     loadedRevision.current = revision;
     editor.commands.setContent(
-      post.body ? bodyToEditorHtml(post.body) : "<p>Start writing…</p>",
+      post.body
+        ? bodyToEditorHtml(post.body, uploadedPreviews.current)
+        : "<p>Start writing…</p>",
       { emitUpdate: false },
     );
   }, [editor, post.body, revision]);
@@ -614,6 +627,7 @@ export function PostEditor() {
       );
       const previewUrl = URL.createObjectURL(optimized);
       objectUrls.current.push(previewUrl);
+      uploadedPreviews.current.set(result.path, previewUrl);
       editor
         .chain()
         .focus()
@@ -660,7 +674,7 @@ export function PostEditor() {
         ref={imageRef}
         hidden
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/avif"
+        accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
         onChange={(event) => void uploadImage(event.target.files?.[0])}
       />
       <aside className="document-list">
@@ -1281,7 +1295,10 @@ export function PostEditor() {
               <div
                 className="preview-prose"
                 dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(editor?.getHTML() || ""),
+                  __html: bodyToEditorHtml(
+                    editor?.getHTML() || "",
+                    uploadedPreviews.current,
+                  ),
                 }}
               />
             </article>
@@ -1290,7 +1307,7 @@ export function PostEditor() {
         {message && (
           <div
             className={
-              /failed|could not|unavailable|required|add a post title/i.test(
+              /failed|could not|unavailable|required|add a post title|invalid|not a valid|smaller than/i.test(
                 message,
               )
                 ? "publish-message error"

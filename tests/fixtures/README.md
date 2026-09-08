@@ -1,0 +1,1 @@
+`animated.gif` is a generated 16×16 GIF89a test image with two solid-color frames (red and blue), 200 ms per frame, and an infinite loop. It contains no external artwork. Tests compare its exact uploaded bytes and verify changing rendered frames in a browser. It is never published as user content.
