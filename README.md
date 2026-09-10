@@ -46,6 +46,8 @@ The Vite server proxies `/api` to `http://127.0.0.1:8787`. `.dev.vars`, `.env`, 
 
 ## Editing and publishing
 
+Visitors can search `/blog/` (and legacy `/notes/`) by title, description, or article text. Results filter as they type, retain newest-first ordering, and can be shared using the `?q=` URL. Clear search restores the complete archive. Search is generated from published posts during each site build and runs in the browser without a backend request; drafts remain private. The archive remains readable without JavaScript.
+
 The CMS sections are Home, Posts, Projects, Résumé, Site, and Settings.
 
 - Posts use a Word-inspired Tiptap editor with semantic headings, text emphasis, lists, quotes, code, links, images, tables, undo/redo, `Ctrl/Cmd+S`, debounced autosave, preview, and publish status.
@@ -201,5 +203,5 @@ The unit suite covers schemas, URL protocol rejection, slugging, Markdown saniti
 - The browser should downscale screenshots before upload; the Worker independently enforces signatures and size. Cloudflare Image Resizing is intentionally not required because it can introduce paid usage.
 - The initial résumé reflects the provided PDF and should be reviewed in the CMS because that PDF is known to be out of date.
 - TOTP can be added behind the existing authentication boundary later; password + Turnstile + layered throttling is the launch configuration.
-- Tags and note search can be added when the archive is large enough to justify them; the year-grouped static archive already scales without client JavaScript.
+- Topic tags can be added when useful; the year-grouped archive now includes text search and stays readable without JavaScript.
 - A custom domain can move the CMS to `admin.example.com` without changing the same-origin session model.

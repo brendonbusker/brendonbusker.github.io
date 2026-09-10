@@ -36,6 +36,7 @@ The public site is intentionally static and remains available if Cloudflare is u
 - Editorial design using Newsreader + Inter, custom CSS, and minimal JavaScript.
 - Routes: `/`, `/blog/`, dated blog posts, `/projects/`, `/resume/`, `/admin/`, RSS, sitemap, and a designed 404.
 - Legacy `/notes/` routes remain for compatibility, while visible language is branded as “Blog.”
+- Both archives share `BlogArchive.astro` with browser-side search over published titles, excerpts, and sanitized article text. Search ignores case/accents/punctuation, requires every query word to match, keeps chronological order, hides empty year groups, and supports shareable `?q=` URLs. Only published text enters the static index; the Worker is not involved. Without JavaScript, the full archive stays readable and the inactive search form stays hidden.
 - Project details use accessible dialogs with query-string deep links, Escape handling, focus restoration, scroll locking, and browser-history behavior.
 
 Published sources:
@@ -225,7 +226,7 @@ These are not necessarily current bugs; confirm priority with the user before im
 - Generate unique social previews for individual blog posts and projects.
 - Add an admin-controlled default Open Graph asset if desired.
 - Add a true PDF résumé generator or upload/version workflow while keeping the stable public PDF URL.
-- Add tags/search only when the growing blog archive justifies them.
+- Add tags if the growing blog archive needs topic filters; text search is now implemented.
 - Consider TOTP later; current password + Turnstile + layered throttling is the configured launch security model.
 
 ## Suggested first prompt for the new Astra task

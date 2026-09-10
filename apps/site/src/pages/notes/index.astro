@@ -1,15 +1,12 @@
 ---
-import { getCollection } from 'astro:content';
-import { postUrl, formatPostDate, blogPageSchema } from '@brendon/shared';
-import site from '../../data/site.json';
+import BlogArchive from '../../components/BlogArchive.astro';
+import { blogPageSchema } from '@brendon/shared';
+
 import blogPageData from '../../data/blog-page.json';
 const blogPage = blogPageSchema.parse(blogPageData);
 import BaseLayout from '../../layouts/BaseLayout.astro';
-const posts = (await getCollection('posts', ({ data }) => data.status === 'published')).sort((a,b) => Date.parse(b.data.publishedAt) - Date.parse(a.data.publishedAt));
-const groups = Object.groupBy(posts, (post) => post.data.publishedAt.slice(0,4));
-const urlFor = (post: typeof posts[number]) => postUrl(post.data.publishedAt, post.data.slug);
 ---
 <BaseLayout title="Blog — Brendon Busker" description={blogPage.description} current="blog">
   <header class="page-intro"><p class="eyebrow">{blogPage.eyebrow}</p><h1>{blogPage.headline}</h1><p>{blogPage.description}</p></header>
-  <div class="archive">{Object.entries(groups).sort(([a],[b]) => +b-+a).map(([year, yearPosts]) => <section aria-labelledby={`year-${year}`}><h2 id={`year-${year}`}>{year}</h2><div>{yearPosts!.map((post) => <article class="archive-row"><time datetime={post.data.publishedAt}><a href={urlFor(post)}>{formatPostDate(post.data.publishedAt, site.timezone, false)}</a></time><h3><a href={urlFor(post)}>{post.data.title}</a></h3><p>{post.data.excerpt}</p></article>)}</div></section>)}</div>
+  <BlogArchive />
 </BaseLayout>

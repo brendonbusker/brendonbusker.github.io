@@ -1,0 +1,111 @@
+---
+import { getCollection } from 'astro:content';
+import { postUrl, formatPostDate } from '@brendon/shared';
+import { marked } from 'marked';
+import sanitizeHtml from 'sanitize-html';
+import site from '../data/site.json';
+
+const posts = (await getCollection('posts', ({ data }) => data.status === 'published'))
+  .sort((a,b) => Date.parse(b.data.publishedAt) - Date.parse(a.data.publishedAt));
+const groups = Object.groupBy(posts, (post) => post.data.publishedAt.slice(0,4));
+const urlFor = (post: typeof posts[number]) => postUrl(post.data.publishedAt, post.data.slug);
+// Only published text is embedded. Strip markup, scripts, media and attributes;
+// the template decodes entities without rendering a second copy of the article.
+const searchBodies = new Map(await Promise.all(posts.map(async post => [post.id,
+  sanitizeHtml(await marked.parse(post.body || ''), {
+    allowedTags: [], allowedAttributes: {}, textFilter: (text) => `${text} `,
+  }),
+] as const)));
+---
+<div class="blog-archive">
+  <form class="blog-search" role="search" aria-label="Blog posts" hidden>
+    <label for="blog-query">Search posts</label>
+    <div class="search-controls">
+      <input id="blog-query" type="search" name="q" maxlength="200" placeholder="Search titles, descriptions, and article text" autocomplete="off" aria-controls="blog-results" />
+      <button type="button" data-clear-search hidden>Clear search</button>
+    </div>
+    <p data-search-status role="status" aria-live="polite"></p>
+  </form>
+  <div class="archive" id="blog-results">
+    {Object.entries(groups).sort(([a],[b]) => +b-+a).map(([year, yearPosts]) =>
+      <section aria-labelledby={`year-${year}`}>
+        <h2 id={`year-${year}`}>{year}</h2>
+        <div>{yearPosts!.map((post) => <article class="archive-row">
+          <time datetime={post.data.publishedAt}><a href={urlFor(post)}>{formatPostDate(post.data.publishedAt, site.timezone, false)}</a></time>
+          <h3><a href={urlFor(post)}>{post.data.title}</a></h3>
+          <p>{post.data.excerpt}</p>
+          <template data-post-text set:html={searchBodies.get(post.id)} />
+        </article>)}</div>
+      </section>
+    )}
+    <p data-search-empty hidden>No posts found. Try different words or clear your search.</p>
+    {posts.length === 0 && <p>No posts published yet.</p>}
+  </div>
+</div>
+
+<script>
+  import { normalizeSearch, matchesSearch } from '../lib/search';
+  const root = document.querySelector<HTMLElement>('.blog-archive');
+  if (root) {
+    const form = root.querySelector<HTMLFormElement>('form')!;
+    const input = root.querySelector<HTMLInputElement>('input')!;
+    const clear = root.querySelector<HTMLButtonElement>('[data-clear-search]')!;
+    const status = root.querySelector<HTMLElement>('[data-search-status]')!;
+    const empty = root.querySelector<HTMLElement>('[data-search-empty]')!;
+    const rows = [...root.querySelectorAll<HTMLElement>('.archive-row')].map(row => ({
+      row,
+      text: normalizeSearch([
+        row.querySelector('h3')?.textContent,
+        row.querySelector('p')?.textContent,
+        row.querySelector<HTMLTemplateElement>('template')?.content.textContent,
+      ].join(' ')),
+    }));
+    const groups = [...root.querySelectorAll<HTMLElement>('.archive > section')];
+    const apply = (updateUrl: boolean) => {
+      const query = input.value.slice(0, 200).trim();
+      let count = 0;
+      for (const {row, text} of rows) {
+        row.hidden = !matchesSearch(text, query);
+        if (!row.hidden) count++;
+      }
+      for (const group of groups) group.hidden = !group.querySelector('.archive-row:not([hidden])');
+      clear.hidden = !input.value;
+      empty.hidden = count !== 0 || !query;
+      status.textContent = query ? `${count} ${count === 1 ? 'post' : 'posts'} found` : `${count} ${count === 1 ? 'post' : 'posts'}`;
+      if (updateUrl) {
+        const url = new URL(window.location.href);
+        if (query) url.searchParams.set('q', query); else url.searchParams.delete('q');
+        window.history.replaceState(window.history.state, '', url);
+      }
+    };
+    let timer: ReturnType<typeof setTimeout>;
+    const restoreQuery = () => {
+      clearTimeout(timer);
+      input.value = (new URL(window.location.href).searchParams.get('q') || '').slice(0, 200);
+      apply(false);
+    };
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => apply(true), 150);
+    });
+    form.addEventListener('submit', event => { event.preventDefault(); clearTimeout(timer); apply(true); });
+    clear.addEventListener('click', () => { clearTimeout(timer); input.value = ''; apply(true); input.focus(); });
+    window.addEventListener('popstate', restoreQuery);
+    restoreQuery();
+    form.hidden = false;
+  }
+</script>
+
+<style>
+  .blog-archive [hidden] { display: none !important; }
+  .blog-search { padding-top: var(--space-6); }
+  .blog-search label { display: block; margin-bottom: .65rem; font-weight: 500; }
+  .search-controls { display: flex; align-items: stretch; gap: .75rem; max-width: 44rem; }
+  .search-controls input { flex: 1; min-width: 0; width: 100%; padding: .85rem 1rem; border: 1px solid var(--rule); border-radius: 0; background: var(--paper-raised); color: var(--ink); font: inherit; }
+  .search-controls input::placeholder { color: var(--graphite); opacity: 1; }
+  .search-controls button { padding: .7rem 1rem; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); font: inherit; cursor: pointer; }
+  .search-controls :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  [data-search-status] { color: var(--graphite); margin: .8rem 0 0; font-size: .9rem; }
+  .blog-search:not([hidden]) + .archive { padding-top: var(--space-5); }
+  @media (max-width: 480px) { .search-controls { flex-wrap: wrap; } .search-controls input { flex-basis: 100%; } }
+</style>
