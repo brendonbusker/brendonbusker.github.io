@@ -14,6 +14,7 @@ import { publishedResume as seedResume } from "../published-seed";
 import { useDraft } from "../hooks";
 import { api, draftsApi, publishedApi, type PublishedItem } from "../api";
 import { SaveStatus } from "./SaveStatus";
+import { ResumePdfPanel } from "./ResumePdfPanel";
 export function ResumeEditor() {
   const [published, setPublished] = useState<PublishedItem<Resume>>({
     content: seedResume,
@@ -144,6 +145,7 @@ export function ResumeEditor() {
           </Button>
         </div>
       </header>
+      <ResumePdfPanel value={value} ready={!syncing && !loading && !!published.sha} />
       {preview ? (
         <div className="resume-preview">
           <aside>

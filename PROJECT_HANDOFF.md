@@ -64,6 +64,7 @@ Published sources:
 - Projects includes a separate “Edit page introduction” screen for its page-level copy.
 - Blog also has an “Edit page introduction” button above its post search. It loads current published copy, previews the three fields, and publishes with the loaded GitHub SHA. Its initial JSON preserves the previously hard-coded archive copy. Returning to the post editor keeps the selected post and its edits.
 - Site editor loads the latest published homepage data rather than stale seed data.
+- Résumé now has a PDF generator using the current editor snapshot (including unsaved edits) with a preview, download, and explicit Publish PDF action. The Letter template is one column with embedded Roboto, selectable Unicode text, standard headings, source-order experience, and automatic pagination. It includes only contacts marked public. Edits after generation invalidate the downloadable/publishable snapshot until regenerated. pdfmake and bundled fonts load only on Generate; no external résumé service or font request is used. Publishing uses the existing protected PDF endpoint and status banner; the public web résumé remains independently published. `resume-pdf.ts` contains the template and nonblocking content checks. Worker CSP permits `blob:` frames for the PDF preview. Current data produces two readable pages; extraction/links/private-contact omission and both page renders were verified. Blank optional URLs now safely pass their schema union; malformed URLs return validation errors instead of throwing inside the protocol refinement.
 
 ### `apps/admin/worker`
 
@@ -225,7 +226,7 @@ These are not necessarily current bugs; confirm priority with the user before im
 
 - Generate unique social previews for individual blog posts and projects.
 - Add an admin-controlled default Open Graph asset if desired.
-- Add a true PDF résumé generator or upload/version workflow while keeping the stable public PDF URL.
+- Consider PDF version history/restoration in the CMS if needed; generation, download, and stable-URL publishing are implemented.
 - Add tags if the growing blog archive needs topic filters; text search is now implemented.
 - Consider TOTP later; current password + Turnstile + layered throttling is the configured launch security model.
 

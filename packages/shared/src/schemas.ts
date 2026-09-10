@@ -3,10 +3,13 @@ import { z } from "zod";
 const safeUrl = z
   .string()
   .url()
-  .refine(
-    (value) => ["https:", "http:", "mailto:"].includes(new URL(value).protocol),
-    "Unsupported URL protocol",
-  );
+  .refine((value) => {
+    try {
+      return ["https:", "http:", "mailto:"].includes(new URL(value).protocol);
+    } catch {
+      return false;
+    }
+  }, "Unsupported URL protocol");
 export const slugSchema = z
   .string()
   .min(1)

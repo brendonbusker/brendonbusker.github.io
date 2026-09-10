@@ -9,6 +9,7 @@ import {
   postSchema,
   projectPageSchema,
   resumeSchema,
+  resumeLinkSchema,
   sanitizeMarkdown,
   sessionIsExpired,
   siteProfileSchema,
@@ -16,6 +17,17 @@ import {
 } from ".";
 
 describe("content schemas", () => {
+  it("allows blank optional résumé URLs and safely rejects malformed links", () => {
+    const link = { label: "Phone", value: "555-0100", public: false };
+    expect(resumeLinkSchema.safeParse({ ...link, url: "" }).success).toBe(true);
+    expect(
+      resumeLinkSchema.safeParse({ ...link, url: "not a URL" }).success,
+    ).toBe(false);
+    expect(
+      resumeLinkSchema.safeParse({ ...link, url: "javascript:alert(1)" })
+        .success,
+    ).toBe(false);
+  });
   it("validates editable projects page copy", () => {
     expect(
       projectPageSchema.parse({
