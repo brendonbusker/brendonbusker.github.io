@@ -112,7 +112,7 @@ export function Settings({ themeId, onThemeChange }: SettingsProps) {
       setAppearanceSource({ path: result.path, sha: result.contentSha });
       setAppearanceDirty(false);
       setMessage(
-        `Public themes published. Site deployment is in progress. Version ${result.version.slice(0, 8)}.`,
+        `Public themes published. Follow the publication status above. Version ${result.version.slice(0, 8)}.`,
       );
     } catch (error) {
       setMessage(

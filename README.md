@@ -58,6 +58,8 @@ The CMS sections are Home, Posts, Projects, Résumé, Site, and Settings.
 
 Drafts stay in D1. Publishing validates the complete payload, derives the repository destination server-side, commits with a human-readable message, and reports that GitHub Pages deployment is in progress. The Worker cannot write `.github/workflows/` or accept an arbitrary repository path.
 
+The publication banner tracks the latest publish made in this browser across admin sections and page refreshes. It shows Publishing, Waiting for build, Building, and Live, with a link to the affected page once verified. Failed/cancelled builds link to GitHub build details; temporary status errors offer Check again without republishing. Posts, deletion, introductions, projects, site settings, images/GIFs, and résumé PDFs all participate. Automatic checks run every 30 seconds for up to ten minutes, then require a manual check. “Live” requires the public `/deployment.json` build marker to contain the publish commit or a descendant, so newer builds can safely supersede earlier builds. Public Actions metadata is read without additional token permissions; commit ancestry uses the existing Contents permission. No private data is included in the public marker.
+
 ## Initial GitHub setup
 
 1. Create or rename the repository to `brendonbusker/brendonbusker.github.io`, with the default branch `main`. The public URL is already configured from the GitHub profile and project links in the supplied résumé.

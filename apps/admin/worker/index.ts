@@ -1,5 +1,6 @@
 import { Hono, type Context, type Next } from "hono";
 import sanitizeHtml from "sanitize-html";
+import { getDeploymentStatus } from "./deployment";
 import {
   appearanceSchema,
   draftSchema,
@@ -17,6 +18,7 @@ import {
   escapeYaml,
   zonedTimestamp,
   hasGifSignature,
+  postUrl,
   MAX_IMAGE_BYTES,
 } from "@brendon/shared";
 
@@ -412,6 +414,27 @@ function githubHeaders(env: Env) {
     "X-GitHub-Api-Version": "2022-11-28",
     "User-Agent": "Brendon-Busker-CMS",
   };
+}
+
+app.get("/api/deployment/:version", async (c) => {
+  const version = c.req.param("version");
+  if (!/^[0-9a-f]{40}$/i.test(version))
+    return c.json({ error: "Invalid publication version." }, 400);
+  try {
+    return c.json(await getDeploymentStatus(c.env, version));
+  } catch {
+    return c.json(
+      {
+        error:
+          "Cannot check deployment right now. Your saved changes are unaffected. Try checking again shortly.",
+      },
+      503,
+    );
+  }
+});
+
+function publicUrl(env: Env, path: string) {
+  return new URL(path, env.PUBLIC_SITE_URL).href;
 }
 
 async function githubContent(env: Env, path: string) {
@@ -819,6 +842,7 @@ app.delete("/api/published/posts", async (c) => {
     return c.json({
       commitUrl: result.commit.html_url,
       version: result.commit.sha,
+      publicUrl: publicUrl(c.env, "/blog/"),
     });
   } catch (error) {
     const id = crypto.randomUUID();
@@ -904,6 +928,23 @@ app.post("/api/publish", async (c) => {
       version: result.commit.sha,
       contentSha: result.content.sha,
       path: result.content.path,
+      publicUrl: publicUrl(
+        c.env,
+        body.contentType === "post"
+          ? postUrl(
+              postSchema.parse(valid).publishedAt,
+              postSchema.parse(valid).slug,
+            )
+          : body.contentType === "project"
+            ? `/projects/?project=${encodeURIComponent(projectSchema.parse(valid).slug)}`
+            : body.contentType === "projectPage"
+              ? "/projects/"
+              : body.contentType === "blogPage"
+                ? "/blog/"
+                : body.contentType === "resume"
+                  ? "/resume/"
+                  : "/",
+      ),
       ...(body.contentType === "post"
         ? { publishedAt: postSchema.parse(valid).publishedAt }
         : {}),
@@ -978,6 +1019,8 @@ app.post("/api/publish/media/:kind/:slug", async (c) => {
     path: path.replace("apps/site/public", ""),
     alt,
     commitUrl: result.commit.html_url,
+    version: result.commit.sha,
+    publicUrl: publicUrl(c.env, path.replace("apps/site/public", "")),
   });
 });
 app.post("/api/publish/resume-pdf", async (c) => {
@@ -999,6 +1042,8 @@ app.post("/api/publish/resume-pdf", async (c) => {
   return c.json({
     path: "/resume/Brendon-Busker-Resume.pdf",
     commitUrl: result.commit.html_url,
+    version: result.commit.sha,
+    publicUrl: publicUrl(c.env, "/resume/Brendon-Busker-Resume.pdf"),
   });
 });
 app.all("/api/*", (c) => c.json({ error: "Not found." }, 404));

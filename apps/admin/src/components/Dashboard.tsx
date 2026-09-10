@@ -50,12 +50,10 @@ export function Dashboard({ go }: { go: (p: string) => void }) {
         </div>
         <div>
           <h2>Publishing</h2>
-          <p className="deployment-status">
-            <span /> GitHub Pages configuration ready
-          </p>
           <p>
-            Published changes create a focused Git commit and start the site
-            deployment. Drafts stay private until you publish.
+            After you publish, the status banner follows your changes from
+            GitHub to the live website. You can switch sections while it builds.
+            Drafts stay private until you publish.
           </p>
         </div>
       </section>

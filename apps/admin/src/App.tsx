@@ -4,6 +4,7 @@ import { api, setCsrf, type Session } from "./api";
 import { LoginPage } from "./components/LoginPage";
 import { AdminShell } from "./components/AdminShell";
 import { Dashboard } from "./components/Dashboard";
+import { PublishingStatus } from "./components/PublishingStatus";
 import {
   applyAdminTheme,
   getAdminTheme,
@@ -68,6 +69,7 @@ export default function App() {
   else
     content = (
       <AdminShell page={page} setPage={setPage} onLogout={logout}>
+        <PublishingStatus />
         <Suspense
           fallback={
             <div className="app-loading">

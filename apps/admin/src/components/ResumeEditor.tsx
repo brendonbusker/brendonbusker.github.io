@@ -82,7 +82,7 @@ export function ResumeEditor() {
         sha: result.contentSha,
       });
       reset(valid);
-      setMessage("Published to GitHub. Site deployment is in progress.");
+      setMessage("Published to GitHub. Follow the publication status above.");
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Could not publish.");
     }
@@ -98,7 +98,7 @@ export function ResumeEditor() {
     try {
       await api("/api/publish/resume-pdf", { method: "POST", body: form });
       setMessage(
-        "Résumé PDF published to its stable download path. Site deployment is in progress.",
+        "Résumé PDF published to its stable download path. Follow the publication status above.",
       );
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "PDF upload failed.");

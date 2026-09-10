@@ -90,7 +90,7 @@ function ProjectPageEditor({ onBack }: { onBack: () => void }) {
       setSource({ path: result.path, sha: result.contentSha });
       setDirty(false);
       setMessage(
-        `Projects page introduction published. Site deployment is in progress. Version ${result.version.slice(0, 8)}.`,
+        `Projects page introduction published. Follow the publication status above. Version ${result.version.slice(0, 8)}.`,
       );
     } catch (error) {
       setMessage(
@@ -256,7 +256,7 @@ export function ProjectEditor() {
       );
       setContentKey(valid.slug);
       reset(valid);
-      setMessage("Published to GitHub. Site deployment is in progress.");
+      setMessage("Published to GitHub. Follow the publication status above.");
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Could not publish.");
     }

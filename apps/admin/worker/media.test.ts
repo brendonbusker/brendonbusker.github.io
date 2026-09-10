@@ -26,6 +26,7 @@ describe("GIF publishing", () => {
       SESSION_IDLE_MINUTES: "45",
       IP_HASH_SECRET: "test",
       GITHUB_OWNER: "owner",
+      PUBLIC_SITE_URL: "https://site.example.com",
       GITHUB_REPO: "repo",
       GITHUB_BRANCH: "main",
       GITHUB_TOKEN: "test",

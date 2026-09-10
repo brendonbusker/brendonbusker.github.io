@@ -58,7 +58,7 @@ export function SiteEditor() {
         sha: result.contentSha,
       });
       reset(valid);
-      setMessage("Published to GitHub. Site deployment is in progress.");
+      setMessage("Published to GitHub. Follow the publication status above.");
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Could not publish.");
     }

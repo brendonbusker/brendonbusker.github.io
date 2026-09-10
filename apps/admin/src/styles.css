@@ -1554,3 +1554,33 @@ select {
     padding: 24px;
   }
 }
+.publishing-banner {
+  margin: 16px 24px;
+  padding: 16px 20px;
+  border: 1px solid var(--admin-border-strong);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+}
+.publishing-summary,
+.publishing-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.publishing-summary {
+  flex: 1 1 260px;
+}
+.publishing-summary p {
+  margin: 4px 0 0;
+}
+.publishing-actions {
+  flex-wrap: wrap;
+}
+.publishing-actions a {
+  color: var(--admin-text);
+  text-decoration: underline;
+}

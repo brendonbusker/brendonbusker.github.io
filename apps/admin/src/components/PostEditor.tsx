@@ -407,7 +407,7 @@ export function PostEditor() {
       setDraftPosts((items) => items.filter(({ key }) => key !== selected));
       reset(valid);
       setMessage(
-        `Published to GitHub. Site deployment is in progress. Version ${result.version.slice(0, 8)}.`,
+        `Published to GitHub. Follow the publication status above. Version ${result.version.slice(0, 8)}.`,
       );
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Publish failed.");
@@ -438,7 +438,7 @@ export function PostEditor() {
         setSelected(next.id);
         setPreview(false);
         setMessage(
-          `Published post deleted. Site deployment is in progress. Version ${result.version.slice(0, 8)}.`,
+          `Published post deleted. Follow the publication status above. Version ${result.version.slice(0, 8)}.`,
         );
         return;
       }

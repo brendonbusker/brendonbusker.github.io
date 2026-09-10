@@ -71,7 +71,7 @@ export function BlogPageEditor({ onBack }: { onBack: () => void }) {
       });
       setDirty(false);
       setMessage(
-        `Blog page introduction published. Site deployment is in progress. Version ${result.version.slice(0, 8)}.`,
+        `Blog page introduction published. Follow the publication status above. Version ${result.version.slice(0, 8)}.`,
       );
     } catch (reason) {
       setError(true);
