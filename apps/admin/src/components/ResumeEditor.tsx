@@ -317,14 +317,7 @@ export function ResumeEditor() {
                       }
                     />
                   </Field>
-                  <Field
-                    label="End"
-                    hint={
-                      item.current
-                        ? "Uncheck ‘I currently work here’ to enter an end date."
-                        : undefined
-                    }
-                  >
+                  <Field label="End">
                     <Input
                       value={item.current ? "Present" : item.endDate}
                       disabled={item.current}
