@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "fullName": "Brendon Busker",
-  "headline": "Technical Consultant",
+  "headline": "Consultant",
   "summary": "",
   "links": [
     {
@@ -25,20 +25,36 @@
   ],
   "experience": [
     {
+      "id": "mattress-firm",
+      "employer": "Trellis Energy",
+      "role": "Consultant",
+      "location": "Houston, Texas",
+      "startDate": "July 2026",
+      "endDate": "Present",
+      "current": true,
+      "description": "",
+      "accomplishments": [
+        "Support end-to-end implementation of SaaS energy transaction management software for natural gas industry clients, translating complex business processes, contracts, tariffs, and operational requirements into scalable system solutions.",
+        "Lead client requirements discussions, document business and functional requirements, develop process flows and test scenarios, and collaborate with developers and stakeholders throughout the full software development lifecycle.",
+        "Perform hands-on application testing, troubleshoot implementation issues, and validate system functionality against customer requirements, industry workflows, and applicable FERC and NAESB standards.",
+        "Deliver client presentations, product demonstrations, training, and ongoing support while identifying opportunities for product enhancements and contributing business insights to the product roadmap."
+      ]
+    },
+    {
       "id": "quorum-technical-consultant",
       "employer": "Quorum Software",
       "role": "Technical Consultant",
       "location": "Houston, Texas",
       "startDate": "July 2024",
-      "endDate": "",
-      "current": true,
+      "endDate": "July 2026",
+      "current": false,
       "description": "",
       "accomplishments": [
         "Support long-running full-scale implementations, custom enhancements, and upgrade projects for Quorum TIPS Gathering clients in the natural gas processing and gathering space.",
         "Contribute to requirements gathering, functional design, gap analysis, and requirements traceability matrices to align software behavior with client operational workflows.",
         "Write SQL validation queries in Oracle PL/SQL and Microsoft SQL Server to investigate bad data, incorrect configuration, failed processes, and migration issues more efficiently than frontend-only review.",
         "Lead QA, UAT, and pre-production testing, create test walkthroughs, resolve configuration issues, and help support three successful go-lives plus post-production stabilization.",
-        "Create user training materials, train clients and an internal colleague, and step into difficult client situations to rebuild trust through consistent follow-through, clearer communication, and reliable delivery."
+        "Create user training materials, train clients and an internal colleague, and step into difficult client situations to rebuild trust through consistent follow-through, clearer communication, and reliable delivery"
       ]
     },
     {
@@ -54,21 +70,6 @@
         "Co-founded and operated a summer coding camp in Austin across multiple summers, teaching Scratch to more than 50 K-6 students and generating more than $15,000 in revenue.",
         "Delivered daily project-based instruction, planned progressively harder mini-projects, and adapted lessons in real time for students with different skill levels.",
         "Managed parent communication, day-to-day operations, neighborhood and school-based marketing, and instructor interviewing and onboarding to support camp growth."
-      ]
-    },
-    {
-      "id": "mattress-firm",
-      "employer": "Mattress Firm",
-      "role": "Sales Associate",
-      "location": "Austin, Texas",
-      "startDate": "July 2021",
-      "endDate": "June 2022",
-      "current": false,
-      "description": "",
-      "accomplishments": [
-        "Guided customers through mattress selection and purchasing by identifying needs, explaining product options, and closing sales against store targets.",
-        "Completed Mattress Firm's Consultative Selling Curriculum covering the sales process, operating procedures, service standards, and the omni-channel customer journey.",
-        "Maintained visual merchandising and planogram standards across the sales floor."
       ]
     }
   ],
@@ -150,9 +151,27 @@
       ],
       "githubUrl": "https://github.com/brendonbusker/UltimateIVCalculator-Webapp",
       "accomplishments": [
-        "Built a full-stack Pokemon IV calculator web application with a Next.js and TypeScript frontend plus a FastAPI backend, replacing an earlier desktop-style tool with a browser-based experience.",
-        "Implemented generation-specific IV, DV, Stat Exp, HP DV, and characteristic logic, plus historical stat data lookups and caching for multiple Pokemon game generations.",
-        "Added a GitHub Pages static deployment path and production hardening such as security headers, environment-based host and origin controls, and rate limiting defaults."
+        "Built a full-stack Pokemon IV calculator web application with a Next.js and TypeScript frontend plus a FastAPI backend, replacing an earlier desktop-style tool with a browser-based experience."
+      ]
+    },
+    {
+      "id": "6480a0ae-0654-46ca-bd07-ef820aebf160",
+      "name": "Personal Website",
+      "summary": "",
+      "url": "https://brendonbusker.github.io/",
+      "techStack": [
+        "Astro",
+        "React",
+        "TypeScript",
+        "Hono",
+        "Cloudflare Workers",
+        "D1/SQLite",
+        "GitHub Actions",
+        "GitHub Pages"
+      ],
+      "githubUrl": "https://github.com/brendonbusker/brendonbusker.github.io",
+      "accomplishments": [
+        "Built and deployed a personal website with a custom private CMS featuring rich-text publishing, animated media uploads, blog search, résumé PDF generation, and automated deployments using Astro, React, TypeScript, and Cloudflare Workers."
       ]
     }
   ],
