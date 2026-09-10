@@ -15,6 +15,7 @@ import { useDraft } from "../hooks";
 import { api, draftsApi, publishedApi, type PublishedItem } from "../api";
 import { SaveStatus } from "./SaveStatus";
 import { ResumePdfPanel } from "./ResumePdfPanel";
+import { ResumeAdditionalFields } from "./ResumeAdditionalFields";
 export function ResumeEditor() {
   const [published, setPublished] = useState<PublishedItem<Resume>>({
     content: seedResume,
@@ -145,7 +146,10 @@ export function ResumeEditor() {
           </Button>
         </div>
       </header>
-      <ResumePdfPanel value={value} ready={!syncing && !loading && !!published.sha} />
+      <ResumePdfPanel
+        value={value}
+        ready={!syncing && !loading && !!published.sha}
+      />
       {preview ? (
         <div className="resume-preview">
           <aside>
@@ -201,14 +205,20 @@ export function ResumeEditor() {
                   onChange={(_, d) => set("fullName", d.value)}
                 />
               </Field>
-              <Field label="Headline">
+              <Field
+                label="Headline"
+                hint="Website only; omitted from the PDF."
+              >
                 <Input
                   value={value.headline}
                   onChange={(_, d) => set("headline", d.value)}
                 />
               </Field>
             </div>
-            <Field label="Professional summary">
+            <Field
+              label="Professional summary"
+              hint="Optional website copy; omitted from the PDF."
+            >
               <Textarea
                 rows={5}
                 value={value.summary}
@@ -310,7 +320,10 @@ export function ResumeEditor() {
                     />
                   </Field>
                 </div>
-                <Field label="Description">
+                <Field
+                  label="Description"
+                  hint="Optional website copy; omitted from the PDF."
+                >
                   <Textarea
                     value={item.description}
                     onChange={(_, d) =>
@@ -412,6 +425,28 @@ export function ResumeEditor() {
                     }
                   />
                 </Field>
+                <div className="three-fields">
+                  {(["location", "startDate", "endDate"] as const).map(
+                    (key) => (
+                      <Field
+                        label={`Education ${i + 1} ${key === "startDate" ? "start" : key === "endDate" ? "end" : "location"}`}
+                        key={key}
+                      >
+                        <Input
+                          value={item[key]}
+                          onChange={(_, d) =>
+                            set(
+                              "education",
+                              value.education.map((x, n) =>
+                                n === i ? { ...x, [key]: d.value } : x,
+                              ),
+                            )
+                          }
+                        />
+                      </Field>
+                    ),
+                  )}
+                </div>
               </div>
             ))}
           </section>
@@ -454,6 +489,7 @@ export function ResumeEditor() {
               </div>
             ))}
           </section>
+          <ResumeAdditionalFields value={value} set={set} />
         </div>
       )}
       {message && (

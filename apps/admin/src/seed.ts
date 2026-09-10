@@ -221,6 +221,8 @@ export const seedResume: Resume = {
     {
       id: "iv",
       name: "Ultimate IV Calculator Webapp",
+      techStack: [],
+      accomplishments: [],
       summary: "A generation-aware Pokémon IV calculator.",
       url: "https://brendonbusker.github.io/UltimateIVCalculator-Webapp/",
     },

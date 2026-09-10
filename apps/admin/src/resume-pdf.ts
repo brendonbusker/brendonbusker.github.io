@@ -1,19 +1,34 @@
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
 import { resumeSchema, type Resume } from "@brendon/shared";
 
-const clean = (text: string) =>
-  text.trim().replace(/[\u2010-\u2015\u2212]/g, "-");
-const join = (parts: string[]) => parts.map(clean).filter(Boolean).join(" | ");
+const clean = (text: string) => {
+  const result = text.trim().replace(/[\u2010-\u2015\u2212]/g, "-");
+  // Standard 14 Times uses WinAnsi. Report unsupported characters instead of
+  // silently dropping them from an application document.
+  for (const char of result) {
+    const code = char.codePointAt(0)!;
+    if (
+      (code >= 32 && code <= 126) ||
+      (code >= 160 && code <= 255) ||
+      [9, 10, 13].includes(code) ||
+      "ŒœŠšŸŽžƒ€‘’“”‚„…†‡ˆ‰‹›˜•™".includes(char)
+    )
+      continue;
+    throw new Error(
+      `The Times PDF template cannot render “${char}”. Replace that character before generating the PDF.`,
+    );
+  }
+  return result;
+};
+const join = (parts: string[], separator = " | ") =>
+  parts.map(clean).filter(Boolean).join(separator);
 const words = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
+const displayUrl = (url: string) => url.replace(/^https?:\/\/(www\.)?/, "");
 
 export function reviewResume(resume: Resume) {
   const notes: string[] = [];
   if (!resume.links.some((link) => link.public && /@/.test(link.value)))
     notes.push("Add a public email address so employers can contact you.");
-  if (words(resume.summary) > 65)
-    notes.push(
-      "Consider shortening the summary to a few focused lines for your target role.",
-    );
   for (const job of resume.experience) {
     if (
       !job.role.trim() ||
@@ -40,147 +55,240 @@ export function reviewResume(resume: Resume) {
   return notes;
 }
 
+// Dimensions, font sizes and leading measured from the user's original resume.pdf.
+// Flow layout preserves the template while allowing edited content to wrap/paginate.
+const width = 525.12;
+const line = (text: string, fontSize: number, height: number, extra = {}) => ({
+  text: clean(text),
+  fontSize,
+  lineHeight: height / (fontSize * ("italics" in extra ? 0.888 : 0.9)),
+  ...extra,
+});
+
 export function resumeDocument(input: Resume): TDocumentDefinitions {
   const resume = resumeSchema.parse(input);
-  if (!resume.fullName.trim() || !resume.headline.trim())
-    throw new Error(
-      "Enter your name and professional headline before generating a PDF.",
-    );
+  if (!resume.fullName.trim())
+    throw new Error("Enter your name before generating a PDF.");
   const content: Content[] = [
-    {
-      text: clean(resume.fullName),
-      fontSize: 20,
+    line(resume.fullName.toUpperCase(), 21, 22.1009, {
       bold: true,
-      margin: [0, 0, 0, 3],
+      alignment: "center",
+    }),
+    {
+      text: resume.links
+        .filter((link) => link.public && link.value.trim())
+        .flatMap((link, index) => [
+          ...(index ? [{ text: " | " }] : []),
+          { text: clean(link.value), ...(link.url ? { link: link.url } : {}) },
+        ]),
+      fontSize: 8.7,
+      lineHeight: 10 / (8.7 * 0.9),
+      alignment: "center",
+      color: "#444444",
+      margin: [0, 0, 0, -0.7367],
     },
-    { text: clean(resume.headline), fontSize: 11, margin: [0, 0, 0, 5] },
-    ...resume.links
-      .filter((link) => link.public && link.value.trim())
-      .map((link) => ({
-        text: `${clean(link.label)}: ${clean(link.value)}`,
-        ...(link.url ? { link: link.url } : {}),
-        fontSize: 9.5,
-        margin: [0, 0, 0, 2] as [number, number, number, number],
-      })),
   ];
   const section = (title: string) =>
     content.push({
-      text: title,
-      bold: true,
-      fontSize: 11,
+      stack: [
+        line(title, 8.8, 8.7104, { bold: true }),
+        {
+          canvas: [
+            {
+              type: "line",
+              x1: 0,
+              y1: 0,
+              x2: width,
+              y2: 0,
+              lineWidth: 0.5,
+              lineColor: "#5b5b5b",
+            },
+          ],
+        },
+      ],
+      unbreakable: true,
       headlineLevel: 1,
-      margin: [0, 12, 0, 5],
+      margin: [
+        0,
+        title === "PROJECTS"
+          ? 7.19285
+          : title === "EDUCATION"
+            ? 6.83275
+            : title === "CERTIFICATIONS"
+              ? 3.95275
+              : 7.5683,
+        0,
+        title === "SKILLS"
+          ? 5.8213
+          : title === "CERTIFICATIONS"
+            ? 5.90055
+            : 6.2334,
+      ],
     });
-  const paragraph = (text: string) => {
-    if (text.trim()) content.push({ text: clean(text), margin: [0, 0, 0, 4] });
-  };
   const bullets = (items: string[]) => {
-    const nonempty = items.map(clean).filter(Boolean);
-    if (nonempty.length)
+    for (const text of items.map(clean).filter(Boolean))
       content.push({
-        ul: nonempty.map((text) => ({ text, margin: [0, 0, 0, 3] })),
-        margin: [10, 0, 0, 5],
+        columns: [
+          {
+            text: "-",
+            font: "Helvetica",
+            fontSize: 10,
+            width: 11,
+            relativePosition: { x: 0, y: -1.06715 },
+          },
+          {
+            ...line(text, 8.95, 10.2),
+            text: text
+              .split(/(\S*-\S*)/g)
+              .map((part, index) => ({ text: part, noWrap: index % 2 === 1 })),
+            leadingIndent: -1.67,
+          },
+        ],
+        columnGap: 0,
+        margin: [0, 0, 0, 0.8],
       });
   };
-  if (resume.summary.trim()) {
-    section("Professional Summary");
-    paragraph(resume.summary);
-  }
-  if (resume.experience.length) {
-    section("Experience");
-    for (const job of resume.experience) {
-      content.push({
-        stack: [
-          { text: clean(job.role) || clean(job.employer), bold: true },
-          {
-            text: join([
-              job.employer,
-              job.location,
-              [job.startDate, job.current ? "Present" : job.endDate]
-                .filter(Boolean)
-                .join(" - "),
-            ]),
-            fontSize: 10,
-          },
-        ],
-        unbreakable: true,
-        headlineLevel: 2,
-        margin: [0, 4, 0, 4],
-      });
-      paragraph(job.description);
-      bullets(job.accomplishments);
-    }
-  }
-  if (resume.education.length) {
-    section("Education");
-    for (const school of resume.education) {
-      content.push({
-        stack: [
-          { text: clean(school.school), bold: true },
-          {
-            text: join([
-              [school.degree, school.field].filter(Boolean).join(", "),
-              school.location,
-              [school.startDate, school.endDate].filter(Boolean).join(" - "),
-            ]),
-          },
-        ],
-        unbreakable: true,
-        margin: [0, 0, 0, 4],
-      });
-      bullets(school.details);
-    }
-  }
+  const entry = (name: string, location: string, role: string, dates: string) =>
+    ({
+      stack: [
+        {
+          columns: [
+            line(name, 10.2, 10.9464, { bold: true }),
+            line(location, 9.2, 10.9464, {
+              alignment: "right",
+              relativePosition: { x: 0, y: -0.317 },
+            }),
+          ],
+        },
+        {
+          columns: [
+            line(role, 9.4, 10.4, {
+              italics: true,
+              color: "#333333",
+              width: "*",
+            }),
+            line(dates, 9.2, 10.4, {
+              italics: true,
+              color: "#333333",
+              alignment: "right",
+              width: "auto",
+              relativePosition: { x: 0, y: -0.0634 },
+            }),
+          ],
+        },
+      ],
+      unbreakable: true,
+      headlineLevel: 2,
+      margin: [32.16, 0, 32.16, 1.6769],
+    }) satisfies Content;
+
   if (resume.skillGroups.some((group) => group.skills.length)) {
-    section("Skills");
+    section("SKILLS");
     for (const group of resume.skillGroups)
       if (group.skills.length)
         content.push({
-          text: [
-            { text: `${clean(group.name)}: `, bold: true },
-            group.skills.map(clean).filter(Boolean).join(", "),
+          columns: [
+            line(`${group.name}:`, 8.9, 10, { bold: true, width: 92.16 }),
+            line(join(group.skills, ", "), 8.9, 10),
           ],
-          margin: [0, 0, 0, 4],
+          columnGap: 0,
+          margin: [32.16, 0, 32.16, 0],
         });
   }
-  if (resume.certifications.length) {
-    section("Certifications");
-    for (const cert of resume.certifications)
-      paragraph(join([cert.name, cert.issuer, cert.date]));
+  if (resume.experience.length) {
+    section("EXPERIENCE");
+    resume.experience.forEach((job, index) => {
+      if (index) content.push({ canvas: [], margin: [0, 3.636, 0, 0] });
+      content.push(
+        entry(
+          job.employer,
+          job.location,
+          job.role,
+          join([job.startDate, job.current ? "Present" : job.endDate], " - "),
+        ),
+      );
+      bullets(job.accomplishments);
+    });
   }
   if (resume.selectedWork.length) {
-    section("Projects");
+    section("PROJECTS");
     for (const project of resume.selectedWork) {
-      content.push({
-        text: clean(project.name),
-        bold: true,
-        headlineLevel: 2,
-        margin: [0, 2, 0, 3],
-      });
-      paragraph(project.summary);
-      if (project.url)
+      content.push(
+        line(project.name, 10.2, 10.9464, { bold: true, headlineLevel: 2 }),
+      );
+      if (project.techStack.length)
+        content.push(
+          line(join(project.techStack, ", "), 9.4, 9.7739, {
+            italics: true,
+            color: "#333333",
+          }),
+        );
+      const links = [
+        ...(project.url
+          ? [{ text: `Live: ${displayUrl(project.url)}`, link: project.url }]
+          : []),
+        ...(project.githubUrl
+          ? [
+              {
+                text: `GitHub: ${displayUrl(project.githubUrl)}`,
+                link: project.githubUrl,
+              },
+            ]
+          : []),
+      ];
+      if (links.length)
         content.push({
-          text: project.url,
-          link: project.url,
-          fontSize: 9,
-          margin: [0, 0, 0, 5],
+          text: links.flatMap((link, index) => [
+            ...(index ? [{ text: " | " }] : []),
+            link,
+          ]),
+          fontSize: 8.5,
+          lineHeight: 10 / (8.5 * 0.9),
+          color: "#333333",
+          margin: [0, 0, 0, 1.54265],
         });
+      bullets(
+        project.accomplishments.length
+          ? project.accomplishments
+          : project.summary.trim()
+            ? [project.summary]
+            : [],
+      );
     }
+  }
+  if (resume.education.length) {
+    section("EDUCATION");
+    for (const school of resume.education) {
+      content.push(
+        entry(
+          school.school,
+          school.location,
+          join([school.degree, school.field], ", "),
+          join([school.startDate, school.endDate], " - "),
+        ),
+      );
+      bullets(school.details);
+    }
+  }
+  if (resume.certifications.length) {
+    section("CERTIFICATIONS");
+    for (const cert of resume.certifications)
+      content.push(
+        line(
+          join([join([cert.name, cert.issuer], ", "), cert.date]),
+          9.15,
+          11.9,
+        ),
+      );
   }
   return {
     pageSize: "LETTER",
-    pageMargins: [42, 36, 42, 36],
+    pageMargins: [43.44, 40.017, 43.44, 36],
     info: {
       title: `${clean(resume.fullName)} - Resume`,
       author: clean(resume.fullName),
-      subject: clean(resume.headline),
     },
-    defaultStyle: {
-      font: "Roboto",
-      fontSize: 10.5,
-      lineHeight: 1.12,
-      color: "#111111",
-    },
+    defaultStyle: { font: "Times", fontSize: 8.95, color: "#111827" },
     content,
     pageBreakBefore: (node, container) =>
       !!node.headlineLevel && container.getFollowingNodesOnPage().length === 0,
@@ -188,12 +296,25 @@ export function resumeDocument(input: Resume): TDocumentDefinitions {
 }
 
 export async function generateResumePdf(resume: Resume) {
-  // Loaded only on demand; the public website and other editors do not load PDF code/fonts.
   const [{ default: pdfMake }, { default: fonts }] = await Promise.all([
     import("pdfmake/build/pdfmake"),
-    import("pdfmake/build/vfs_fonts"),
+    import("./fonts/times"),
   ]);
   pdfMake.addVirtualFileSystem(fonts);
+  pdfMake.addFonts({
+    Times: {
+      normal: "Times-Roman",
+      bold: "Times-Bold",
+      italics: "Times-Italic",
+      bolditalics: "Times-BoldItalic",
+    },
+    Helvetica: {
+      normal: "Helvetica",
+      bold: "Helvetica",
+      italics: "Helvetica",
+      bolditalics: "Helvetica",
+    },
+  });
   const blob = await pdfMake.createPdf(resumeDocument(resume)).getBlob();
   const filename = `${resume.fullName.trim().replace(/[^\p{L}\p{N}]+/gu, "-") || "Resume"}-Resume.pdf`;
   return { blob, filename };

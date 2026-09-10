@@ -74,8 +74,9 @@ test("generate, download, regenerate and publish the exact reviewed résumé PDF
   expect(downloaded.suggestedFilename()).toBe("Brendon-Busker-Resume.pdf");
   await downloaded.saveAs("test-results/generated-resume.pdf");
   await page
-    .getByLabel("Professional summary")
+    .getByLabel("Project 1 accomplishments", { exact: true })
     .fill("Current editor changes included in the reviewed PDF.");
+  await page.getByLabel("Contact 2 text", { exact: true }).fill("555-123-4567");
   await expect(
     page.getByRole("button", { name: "Publish PDF to website" }),
   ).toBeDisabled();

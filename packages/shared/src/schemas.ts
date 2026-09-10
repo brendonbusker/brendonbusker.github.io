@@ -174,6 +174,9 @@ export const resumeSchema = z.object({
         name: z.string(),
         summary: z.string(),
         url: safeUrl.optional().or(z.literal("")),
+        techStack: z.array(z.string()).default([]),
+        githubUrl: safeUrl.optional().or(z.literal("")),
+        accomplishments: z.array(z.string()).default([]),
       }),
     )
     .default([]),

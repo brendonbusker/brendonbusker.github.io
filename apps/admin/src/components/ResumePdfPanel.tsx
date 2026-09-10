@@ -81,9 +81,10 @@ export function ResumePdfPanel({
     <section className="resume-pdf-panel" aria-labelledby="resume-pdf-title">
       <h2 id="resume-pdf-title">Generate a résumé PDF</h2>
       <p>
-        Uses the current editor content, including unpublished edits. Single
-        column, standard headings, selectable text and embedded fonts. Only
-        contact details marked public are included.
+        Uses your original résumé’s Times layout: centered contact line, Skills,
+        Experience, Projects, Education and Certifications. Includes current
+        editor changes and public contact details. The headline, professional
+        summary and role descriptions are for the website only.
       </p>
       <p>
         Download a copy for applications, or publish it to replace the website’s
@@ -122,9 +123,9 @@ export function ResumePdfPanel({
       <details>
         <summary>Before applying</summary>
         <p>
-          Tailor the headline, skills and strongest accomplishments to the role.
-          Keep relevant experience first and use specific actions and results
-          you can support. Review spelling, dates, links and page breaks.
+          Tailor the skills and strongest accomplishments to the role. Keep
+          relevant experience first and use specific actions and results you can
+          support. Review spelling, dates, links and page breaks.
         </p>
         {notes.length > 0 && (
           <ul>
