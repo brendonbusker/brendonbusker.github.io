@@ -79,7 +79,13 @@ export function ResumeEditor() {
   };
   const publish = async () => {
     try {
-      const valid = resumeSchema.parse(value);
+      const valid = resumeSchema.parse({
+        ...value,
+        experience: value.experience.map((item) => ({
+          ...item,
+          accomplishments: item.accomplishments.filter((line) => line.trim()),
+        })),
+      });
       const result = await draftsApi.publish("resume", valid, {
         expectedSha: published.sha || undefined,
       });
@@ -183,9 +189,11 @@ export function ResumeEditor() {
                   {x.startDate} — {x.current ? "Present" : x.endDate}
                 </small>
                 <ul>
-                  {x.accomplishments.map((a) => (
-                    <li>{a}</li>
-                  ))}
+                  {x.accomplishments
+                    .filter((a) => a.trim())
+                    .map((a) => (
+                      <li>{a}</li>
+                    ))}
                 </ul>
               </article>
             ))}
@@ -353,7 +361,7 @@ export function ResumeEditor() {
                       updateExperience(
                         i,
                         "accomplishments",
-                        d.value.split("\n").filter(Boolean),
+                        d.value.split("\n"),
                       )
                     }
                   />

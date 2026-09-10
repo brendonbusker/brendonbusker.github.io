@@ -48,6 +48,19 @@ test("current roles can become past roles and retain their end date through savi
     ).toBeEnabled();
   };
   await openResume();
+  const accomplishments = page
+    .getByLabel("Accomplishments (one per line)", { exact: true })
+    .first();
+  await accomplishments.fill("First accomplishment.");
+  await accomplishments.press("End");
+  await accomplishments.press("Enter");
+  await expect(accomplishments).toHaveValue("First accomplishment.\n");
+  await accomplishments.pressSequentially("Second accomplishment.");
+  await accomplishments.press("Enter");
+  await accomplishments.press("Enter");
+  await expect(accomplishments).toHaveValue(
+    "First accomplishment.\nSecond accomplishment.\n\n",
+  );
   const current = page
     .getByRole("checkbox", { name: "I currently work here", exact: true })
     .first();
@@ -63,6 +76,9 @@ test("current roles can become past roles and retain their end date through savi
     .toMatchObject({ current: false, endDate: "September 2026" });
   await page.reload();
   await openResume();
+  await expect(accomplishments).toHaveValue(
+    "First accomplishment.\nSecond accomplishment.\n\n",
+  );
   await expect(current).not.toBeChecked();
   await expect(end).toHaveValue("September 2026");
   await current.check();
@@ -75,6 +91,7 @@ test("current roles can become past roles and retain their end date through savi
   expect(published.experience[0]).toMatchObject({
     current: false,
     endDate: "September 2026",
+    accomplishments: ["First accomplishment.", "Second accomplishment."],
   });
   await expect.poll(() => draft).toBeNull();
   await page.reload();
