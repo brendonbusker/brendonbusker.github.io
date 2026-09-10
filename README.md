@@ -60,6 +60,8 @@ Drafts stay in D1. Publishing validates the complete payload, derives the reposi
 
 The publication banner tracks the latest publish made in this browser across admin sections and page refreshes. It shows Publishing, Waiting for build, Building, and Live, with a link to the affected page once verified. Failed/cancelled builds link to GitHub build details; temporary status errors offer Check again without republishing. Posts, deletion, introductions, projects, site settings, images/GIFs, and résumé PDFs all participate. Automatic checks run every 30 seconds for up to ten minutes, then require a manual check. “Live” requires the public `/deployment.json` build marker to contain the publish commit or a descendant, so newer builds can safely supersede earlier builds. Public Actions metadata is read without additional token permissions; commit ancestry uses the existing Contents permission. No private data is included in the public marker.
 
+Publication status checks retry temporary network/time-out/server errors automatically after 5, 15, and 30 seconds, showing Rechecking status instead of a raw browser error. After repeated failures they offer Check again; an expired session requires sign-in. Each check times out after 20 seconds and is cancelled when the banner is dismissed or replaced. Publishing requests themselves are never retried automatically.
+
 ## Initial GitHub setup
 
 1. Create or rename the repository to `brendonbusker/brendonbusker.github.io`, with the default branch `main`. The public URL is already configured from the GitHub profile and project links in the supplied résumé.

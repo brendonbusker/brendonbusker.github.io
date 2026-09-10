@@ -6,6 +6,7 @@ export type Publication = {
     | "publishing"
     | "waiting"
     | "building"
+    | "retrying"
     | "live"
     | "failed"
     | "cancelled"

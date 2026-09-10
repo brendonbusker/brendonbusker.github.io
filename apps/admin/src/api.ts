@@ -8,6 +8,15 @@ let csrfToken = "";
 export function setCsrf(value?: string) {
   csrfToken = value || "";
 }
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
 export async function api<T>(path: string, options: RequestInit = {}) {
   const tracksPublish =
     (options.method === "POST" && path.startsWith("/api/publish")) ||
@@ -34,10 +43,11 @@ export async function api<T>(path: string, options: RequestInit = {}) {
       error: "The server returned an unreadable response.",
     }))) as Record<string, unknown>;
     if (!response.ok)
-      throw new Error(
+      throw new ApiError(
         typeof data.error === "string"
           ? data.error
           : `Request failed (${response.status})`,
+        response.status,
       );
     if (id) {
       if (

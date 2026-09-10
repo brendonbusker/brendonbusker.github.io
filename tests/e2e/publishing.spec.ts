@@ -2,6 +2,89 @@ import { test, expect } from "@playwright/test";
 import blogPage from "../../apps/site/src/data/blog-page.json";
 import site from "../../apps/site/src/data/site.json";
 
+for (const scenario of [
+  "temporary",
+  "persistent",
+  "expired session",
+] as const) {
+  test(`status checks recover safely from ${scenario} errors`, async ({
+    page,
+  }) => {
+    let checks = 0;
+    let recovered = false;
+    await page.addInitScript(() =>
+      localStorage.setItem(
+        "cms-latest-publication",
+        JSON.stringify({
+          id: "published",
+          version: "a".repeat(40),
+          publicUrl: "https://brendonbusker.github.io/",
+          state: "waiting",
+        }),
+      ),
+    );
+    await page.route("**/api/**", async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      if (path === "/api/session") {
+        await route.fulfill({
+          json: { authenticated: true, csrfToken: "test" },
+        });
+      } else if (path.startsWith("/api/deployment/")) {
+        checks++;
+        if (recovered || (scenario === "temporary" && checks > 2)) {
+          await route.fulfill({
+            json: {
+              state: "live",
+              message: "Your changes are live on the website.",
+            },
+          });
+        } else if (scenario === "expired session") {
+          await route.fulfill({
+            status: 401,
+            json: { error: "Your session has expired. Sign in again." },
+          });
+        } else if (scenario === "temporary" && checks === 2) {
+          await route.fulfill({
+            status: 503,
+            json: { error: "Temporarily unavailable." },
+          });
+        } else await route.abort("failed");
+      } else throw new Error(`Unexpected request: ${path}`);
+    });
+    await page.clock.install();
+    await page.goto("http://127.0.0.1:5173/");
+    const banner = page.getByRole("region", { name: "Publication status" });
+    if (scenario === "expired session") {
+      await expect(banner).toContainText("Your session has expired");
+      await page.clock.fastForward(60001);
+      expect(checks).toBe(1);
+      return;
+    }
+    await expect(banner).toContainText("Rechecking status");
+    await expect(banner).not.toContainText("NetworkError");
+    await page.clock.fastForward(5001);
+    await expect.poll(() => checks).toBe(2);
+    await expect(banner).toContainText("Rechecking status");
+    await page.clock.fastForward(15001);
+    if (scenario === "temporary") {
+      await expect(banner).toContainText("Your changes are live");
+      await page.clock.fastForward(60001);
+      expect(checks).toBe(3);
+    } else {
+      await expect.poll(() => checks).toBe(3);
+      await expect(banner).toContainText("Rechecking status");
+      await page.clock.fastForward(30001);
+      await expect(banner).toContainText("Status unavailable");
+      await page.clock.fastForward(60001);
+      expect(checks).toBe(4);
+      recovered = true;
+      await banner.getByRole("button", { name: "Check again" }).click();
+      await expect(banner).toContainText("Your changes are live");
+      expect(checks).toBe(5);
+    }
+  });
+}
+
 test("publication status follows a publish across navigation, refresh, failure and recovery", async ({
   page,
 }) => {
@@ -75,10 +158,10 @@ test("publication status follows a publish across navigation, refresh, failure a
   await expect(banner).toContainText("Deployment is building.");
   unavailable = true;
   await page.reload();
-  await expect(banner).toContainText("Status unavailable");
+  await expect(banner).toContainText("Rechecking status");
   unavailable = false;
   state = "failed";
-  await banner.getByRole("button", { name: "Check again" }).click();
+  await page.clock.fastForward(5001);
   await expect(banner).toContainText("Needs attention");
   await expect(
     banner.getByRole("link", { name: /View published/ }),
