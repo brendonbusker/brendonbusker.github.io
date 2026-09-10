@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Field, Input, Textarea } from "@fluentui/react-components";
+import {
+  Button,
+  Checkbox,
+  Field,
+  Input,
+  Textarea,
+} from "@fluentui/react-components";
 import {
   Add20Regular,
   ArrowDown20Regular,
@@ -311,15 +317,30 @@ export function ResumeEditor() {
                       }
                     />
                   </Field>
-                  <Field label="End">
+                  <Field
+                    label="End"
+                    hint={
+                      item.current
+                        ? "Uncheck ‘I currently work here’ to enter an end date."
+                        : undefined
+                    }
+                  >
                     <Input
                       value={item.current ? "Present" : item.endDate}
+                      disabled={item.current}
                       onChange={(_, d) =>
                         updateExperience(i, "endDate", d.value)
                       }
                     />
                   </Field>
                 </div>
+                <Checkbox
+                  label="I currently work here"
+                  checked={item.current}
+                  onChange={(_, d) =>
+                    updateExperience(i, "current", d.checked === true)
+                  }
+                />
                 <Field
                   label="Description"
                   hint="Optional website copy; omitted from the PDF."
