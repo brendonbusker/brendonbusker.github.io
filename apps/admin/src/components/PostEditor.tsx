@@ -48,6 +48,7 @@ import {
   LineHorizontal120Regular,
 } from "@fluentui/react-icons";
 import { useEditor, EditorContent } from "@tiptap/react";
+import type { Transaction } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import { Table } from "@tiptap/extension-table";
@@ -78,6 +79,11 @@ import { newPost } from "../seed";
 import { useDraft } from "../hooks";
 import { api, draftsApi, publishedApi, type PublishedItem } from "../api";
 import { optimizeImage } from "../media";
+import {
+  IMAGE_TYPES,
+  pastedImageFiles,
+  readClipboardImages,
+} from "../clipboard-images";
 import { SaveStatus } from "./SaveStatus";
 import { BlogPageEditor } from "./BlogPageEditor";
 
@@ -214,6 +220,9 @@ export function PostEditor() {
   const publicationInputScope = useRef("");
   const [dateError, setDateError] = useState("");
   const imageRef = useRef<HTMLInputElement>(null);
+  const [imageUploads, setImageUploads] = useState(0);
+  const uploadQueue = useRef(Promise.resolve());
+  const pendingUploads = useRef(0);
   const loadedRevision = useRef(-1);
   const objectUrls = useRef<string[]>([]);
   const uploadedPreviews = useRef(new Map<string, string>());
@@ -342,6 +351,15 @@ export function PostEditor() {
       : "<p>Start writing…</p>",
     editorProps: {
       attributes: { class: "document-surface", "aria-label": "Post body" },
+      handlePaste: (_view, event) => {
+        if (!event.clipboardData) return false;
+        const files = pastedImageFiles(event.clipboardData);
+        if (!files.length) return false;
+        // Consume the accompanying HTML too, so the image is inserted only once.
+        event.preventDefault();
+        uploadImages(files);
+        return true;
+      },
     },
     onUpdate: ({ editor }) => {
       const body = editorHtmlForStorage(editor.getHTML());
@@ -375,6 +393,7 @@ export function PostEditor() {
       updatedAt: new Date().toISOString(),
     }));
   const publish = async () => {
+    if (pendingUploads.current) return;
     setPublishing(true);
     setMessage("");
     try {
@@ -518,11 +537,25 @@ export function PostEditor() {
       );
     }
   };
-  const pasteText = async () => {
+  const pasteClipboard = async () => {
     if (!editor) return;
+    const targetRevision = loadedRevision.current;
     try {
+      if (navigator.clipboard.read) {
+        const items = await navigator.clipboard.read();
+        const files = await readClipboardImages(items);
+        if (editor.isDestroyed || loadedRevision.current !== targetRevision)
+          return;
+        if (files.length) {
+          uploadImages(files);
+          return;
+        }
+      }
       const text = await navigator.clipboard.readText();
-      editor.chain().focus().insertContent(text).run();
+      if (editor.isDestroyed || loadedRevision.current !== targetRevision)
+        return;
+      editor.view.pasteText(text);
+      editor.commands.focus();
       setMessage("Clipboard text pasted.");
     } catch {
       setMessage("Clipboard access is unavailable. Use Ctrl+V instead.");
@@ -611,50 +644,105 @@ export function PostEditor() {
     setSelected(key);
     setPreview(false);
   };
-  const uploadImage = async (file?: File) => {
-    if (!file || !editor) return;
-    const alt = prompt(
-      "Describe this image for visitors using a screen reader.",
-    );
-    if (!alt) return;
+  function uploadImages(files: File[]) {
+    if (
+      !files.length ||
+      !editor ||
+      editor.isDestroyed ||
+      loading ||
+      syncing ||
+      publishing
+    )
+      return;
     const slug = post.slug || slugify(post.title);
     if (!slug) {
       setMessage("Add a post title before uploading an image.");
       return;
     }
-    try {
-      const optimized = await optimizeImage(file);
-      const form = new FormData();
-      form.append("file", optimized);
-      form.append("alt", alt);
-      const result = await api<{ path: string; alt: string }>(
-        `/api/publish/media/posts/${slug}`,
-        { method: "POST", body: form },
-      );
-      const previewUrl = URL.createObjectURL(optimized);
-      objectUrls.current.push(previewUrl);
-      uploadedPreviews.current.set(result.path, previewUrl);
-      editor
-        .chain()
-        .focus()
-        .setImage({
-          src: previewUrl,
-          alt: result.alt,
-          cmsPath: result.path,
-          layout: "block",
-        } as Parameters<typeof editor.commands.setImage>[0])
-        .run();
-      setMessage(
-        "Image inserted. Drag it to move it, or select it and use the resize handles.",
-      );
-    } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Image upload failed.",
-      );
-    } finally {
-      if (imageRef.current) imageRef.current.value = "";
-    }
-  };
+    let position = editor.state.selection.from;
+    const described = files.flatMap((file, index) => {
+      const alt = prompt(
+        `Describe this image for visitors using a screen reader.${files.length > 1 ? ` (${index + 1} of ${files.length}: ${file.name})` : ""}`,
+      )?.trim();
+      return alt ? [{ file, alt }] : [];
+    });
+    if (!described.length) return;
+    const targetEditor = editor;
+    const targetRevision = loadedRevision.current;
+    let removed = false;
+    let interacted = false;
+    const trackPosition = ({ transaction }: { transaction: Transaction }) => {
+      interacted ||= transaction.docChanged || transaction.selectionSet;
+      const mapped = transaction.mapping.mapResult(position, 1);
+      position = mapped.pos;
+      removed ||= mapped.deleted;
+    };
+    targetEditor.on("transaction", trackPosition);
+    const isCurrent = () =>
+      !targetEditor.isDestroyed &&
+      !removed &&
+      loadedRevision.current === targetRevision;
+    pendingUploads.current += described.length;
+    setImageUploads(pendingUploads.current);
+    setMessage("");
+    // Serialize GitHub media writes, including separate paste events, to retain order.
+    uploadQueue.current = uploadQueue.current.then(async () => {
+      let inserted = 0;
+      const errors: string[] = [];
+      try {
+        for (const { file, alt } of described) {
+          if (!isCurrent()) break;
+          try {
+            const optimized = await optimizeImage(file);
+            if (!isCurrent()) break;
+            const form = new FormData();
+            form.append("file", optimized);
+            form.append("alt", alt);
+            const result = await api<{ path: string; alt: string }>(
+              `/api/publish/media/posts/${slug}`,
+              { method: "POST", body: form },
+            );
+            if (!isCurrent()) break;
+            const previewUrl = URL.createObjectURL(optimized);
+            objectUrls.current.push(previewUrl);
+            uploadedPreviews.current.set(result.path, previewUrl);
+            // Keep the existing image controls selected if the writer waited,
+            // but never steal their caret after they have resumed editing.
+            const selectImage = !interacted;
+            targetEditor.commands.insertContentAt(
+              position,
+              {
+                type: "image",
+                attrs: {
+                  src: previewUrl,
+                  alt: result.alt,
+                  cmsPath: result.path,
+                  layout: "block",
+                },
+              },
+              { updateSelection: selectImage },
+            );
+            if (selectImage) targetEditor.commands.focus();
+            inserted += 1;
+          } catch (error) {
+            errors.push(
+              `${file.name}: ${error instanceof Error ? error.message : "Image upload failed."}`,
+            );
+          }
+        }
+        if (isCurrent())
+          setMessage(
+            errors.length
+              ? `Image upload failed. ${errors.join(" ")} ${inserted ? `${inserted} other image(s) inserted.` : "Paste or select the image again to retry."}`
+              : "Image inserted. Drag it to move it, or select it and use the resize handles.",
+          );
+      } finally {
+        targetEditor.off("transaction", trackPosition);
+        pendingUploads.current -= described.length;
+        if (!targetEditor.isDestroyed) setImageUploads(pendingUploads.current);
+      }
+    });
+  }
   const selectedImageLayout = editor?.isActive("image")
     ? imageLayout(editor.getAttributes("image").layout)
     : "block";
@@ -682,8 +770,11 @@ export function PostEditor() {
         ref={imageRef}
         hidden
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
-        onChange={(event) => void uploadImage(event.target.files?.[0])}
+        accept={IMAGE_TYPES.join(",")}
+        onChange={(event) => {
+          uploadImages(Array.from(event.target.files ?? []));
+          event.target.value = "";
+        }}
       />
       <aside className="document-list">
         <header>
@@ -762,6 +853,7 @@ export function PostEditor() {
               onClick={publish}
               disabled={
                 publishing ||
+                imageUploads > 0 ||
                 deleting ||
                 syncing ||
                 loading ||
@@ -862,6 +954,13 @@ export function PostEditor() {
             />
           </Field>
         </div>
+        {imageUploads > 0 && (
+          <div className="publish-message" role="status">
+            Uploading {imageUploads} image{imageUploads === 1 ? "" : "s"} to
+            GitHub… You can keep writing. Publish will be available when uploads
+            finish.
+          </div>
+        )}
         {!preview && (
           <>
             <Toolbar className="editor-ribbon" aria-label="Document formatting">
@@ -885,7 +984,7 @@ export function PostEditor() {
                   <Tool
                     label="Paste"
                     icon={<ClipboardPaste20Regular />}
-                    onClick={() => void pasteText()}
+                    onClick={() => void pasteClipboard()}
                   />
                   <Tool
                     label="Cut"
