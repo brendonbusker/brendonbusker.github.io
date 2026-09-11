@@ -1,3 +1,4 @@
+import { dashboardFixture } from "../fixtures/dashboard";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import source from "../../apps/site/src/data/resume.json";
 
@@ -24,6 +25,10 @@ async function setup(
   await page.route("**/api/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
+    if (path === "/api/dashboard") {
+      await route.fulfill({ json: dashboardFixture });
+      return;
+    }
     let json: unknown = {},
       status = 200;
     if (path === "/api/session")

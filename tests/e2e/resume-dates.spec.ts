@@ -1,3 +1,4 @@
+import { dashboardFixture } from "../fixtures/dashboard";
 import { expect, test } from "@playwright/test";
 import resume from "../../apps/site/src/data/resume.json";
 
@@ -12,6 +13,10 @@ test("current roles can become past roles and retain their end date through savi
   await page.route("**/api/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
+    if (path === "/api/dashboard") {
+      await route.fulfill({ json: dashboardFixture });
+      return;
+    }
     let response: unknown;
     if (path === "/api/session")
       response = { authenticated: true, csrfToken: "test" };

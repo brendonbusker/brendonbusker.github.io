@@ -1,3 +1,4 @@
+import { dashboardFixture } from "../fixtures/dashboard";
 import { expect, test } from "@playwright/test";
 import resume from "../../apps/site/src/data/resume.json";
 
@@ -22,6 +23,10 @@ test("generate, download, regenerate and publish the exact reviewed résumé PDF
   };
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
+    if (path === "/api/dashboard") {
+      await route.fulfill({ json: dashboardFixture });
+      return;
+    }
     let response: unknown = {};
     if (path === "/api/session")
       response = { authenticated: true, csrfToken: "test" };
@@ -111,6 +116,10 @@ test("PDF generation stays disabled if the current published résumé cannot loa
 }) => {
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
+    if (path === "/api/dashboard") {
+      await route.fulfill({ json: dashboardFixture });
+      return;
+    }
     if (path === "/api/session")
       await route.fulfill({ json: { authenticated: true, csrfToken: "test" } });
     else if (path === "/api/published/resume")

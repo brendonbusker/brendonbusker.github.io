@@ -1,3 +1,4 @@
+import { dashboardFixture } from "../fixtures/dashboard";
 import { test, expect } from "@playwright/test";
 import blogPage from "../../apps/site/src/data/blog-page.json";
 import site from "../../apps/site/src/data/site.json";
@@ -25,6 +26,10 @@ for (const scenario of [
     );
     await page.route("**/api/**", async (route) => {
       const path = new URL(route.request().url()).pathname;
+      if (path === "/api/dashboard") {
+        await route.fulfill({ json: dashboardFixture });
+        return;
+      }
       if (path === "/api/session") {
         await route.fulfill({
           json: { authenticated: true, csrfToken: "test" },
@@ -97,6 +102,10 @@ test("publication status follows a publish across navigation, refresh, failure a
   let writes = 0;
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
+    if (path === "/api/dashboard") {
+      await route.fulfill({ json: dashboardFixture });
+      return;
+    }
     let response: unknown = {};
     if (path === "/api/session")
       response = { authenticated: true, csrfToken: "test" };

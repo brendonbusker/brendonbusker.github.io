@@ -623,6 +623,62 @@ async function publishedCollection(env: Env, type: "posts" | "projects") {
   });
 }
 
+async function lastFileUpdate(env: Env, path: string) {
+  const query = new URLSearchParams({
+    sha: env.GITHUB_BRANCH,
+    path,
+    per_page: "1",
+  });
+  const response = await fetch(
+    `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/commits?${query}`,
+    { headers: githubHeaders(env), signal: AbortSignal.timeout(10000) },
+  );
+  if (!response.ok) throw new Error("Could not read publication history");
+  const commits =
+    await response.json<Array<{ commit: { committer: { date: string } } }>>();
+  if (!Array.isArray(commits)) throw new Error("Invalid publication history");
+  const date = commits[0]?.commit?.committer?.date;
+  if (!commits.length) return null;
+  if (!date || !Number.isFinite(Date.parse(date)))
+    throw new Error("Invalid publication date");
+  return date;
+}
+
+app.get("/api/dashboard", async (c) => {
+  try {
+    const [posts, projects, profileFile, webUpdatedAt, pdfUpdatedAt] =
+      await Promise.all([
+        publishedCollection(c.env, "posts"),
+        publishedCollection(c.env, "projects"),
+        githubTextFile(c.env, "apps/site/src/data/site.json"),
+        lastFileUpdate(c.env, "apps/site/src/data/resume.json"),
+        lastFileUpdate(
+          c.env,
+          "apps/site/public/resume/Brendon-Busker-Resume.pdf",
+        ),
+      ]);
+    const profile = siteProfileSchema.parse(JSON.parse(profileFile.text));
+    const latest = posts.find(
+      ({ content }) => "status" in content && content.status === "published",
+    );
+    return c.json({
+      fullName: profile.fullName,
+      timezone: profile.timezone,
+      latestPost: latest ? { title: latest.content.title } : null,
+      projectCount: projects.filter(
+        ({ content }) => "published" in content && content.published,
+      ).length,
+      webUpdatedAt,
+      pdfUpdatedAt,
+    });
+  } catch {
+    return c.json(
+      { error: "Could not load current site details. Please retry." },
+      502,
+    );
+  }
+});
+
 app.get("/api/published/:type", async (c) => {
   const type = c.req.param("type") as PublishedType;
   try {
