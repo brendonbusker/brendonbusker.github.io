@@ -881,6 +881,17 @@ select {
 .resume-form {
   display: grid;
   gap: 24px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.resume-form .two-fields,
+.resume-form .three-fields {
+  align-items: start;
+}
+.resume-form .fui-Field {
+  min-width: 0;
 }
 .repeatable-card {
   position: relative;
@@ -910,6 +921,14 @@ select {
 .resume-preview aside {
   padding-right: 35px;
   border-right: 1px solid #d1d1d1;
+}
+.resume-preview > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.resume-preview a {
+  color: #1e4c73;
+  text-underline-offset: 0.15em;
 }
 .resume-preview aside h2 {
   font:

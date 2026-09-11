@@ -6,6 +6,7 @@ import {
   Textarea,
 } from "@fluentui/react-components";
 import type { Resume } from "@brendon/shared";
+import { CommaListInput } from "./CommaListInput";
 
 export function ResumeAdditionalFields({
   value,
@@ -127,15 +128,9 @@ export function ResumeAdditionalFields({
               label={`Project ${i + 1} technologies`}
               hint="Separate technologies with commas."
             >
-              <Input
-                value={(project.techStack || []).join(", ")}
-                onChange={(_, d) =>
-                  updateProject(
-                    i,
-                    "techStack",
-                    d.value.split(",").map((v) => v.trim()),
-                  )
-                }
+              <CommaListInput
+                items={project.techStack || []}
+                onItemsChange={(items) => updateProject(i, "techStack", items)}
               />
             </Field>
             <div className="two-fields">

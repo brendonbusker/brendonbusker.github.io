@@ -869,6 +869,13 @@ app.post("/api/publish", async (c) => {
       expectedSha?: string;
       targetPath?: string;
     }>();
+    if (body.contentType === "resume" && !body.expectedSha?.trim())
+      return c.json(
+        {
+          error: "Load the current published résumé before publishing changes.",
+        },
+        400,
+      );
     let valid = validateContent(body.contentType, body.payload);
     if (body.targetPath) {
       const expectedPrefix =

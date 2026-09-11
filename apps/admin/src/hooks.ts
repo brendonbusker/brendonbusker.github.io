@@ -6,6 +6,7 @@ export function useDraft<T>(
   contentKey: string,
   initial: T,
   sourceVersion = "",
+  canSave = true,
 ) {
   const [value, setValueState] = useState(initial);
   const [state, setState] = useState<SaveState>("idle");
@@ -17,6 +18,10 @@ export function useDraft<T>(
   const initialRef = useRef(initial);
   const editVersion = useRef(0);
   const scopeVersion = useRef(0);
+  const saveQueue = useRef<Promise<boolean>>(Promise.resolve(true));
+  const locked = useRef(false);
+  const canSaveRef = useRef(canSave);
+  canSaveRef.current = canSave;
   initialRef.current = initial;
   useEffect(() => {
     let alive = true;
@@ -49,29 +54,37 @@ export function useDraft<T>(
     };
   }, [contentType, contentKey, sourceVersion]);
   const save = useCallback(
-    async (next?: T) => {
+    async (next?: T, force = false) => {
+      if (!canSaveRef.current || (locked.current && !force)) return false;
       const payload = next ?? valueRef.current;
       const scope = scopeVersion.current;
       const version = editVersion.current;
       setState("saving");
-      try {
-        await draftsApi.save({
-          id: crypto.randomUUID(),
-          contentType,
-          contentKey,
-          payload,
-        });
-        if (scope === scopeVersion.current)
-          setState(version === editVersion.current ? "saved" : "unsaved");
-      } catch {
-        if (scope === scopeVersion.current && version === editVersion.current)
-          setState("error");
-      }
+      const operation = saveQueue.current.then(async () => {
+        try {
+          await draftsApi.save({
+            id: crypto.randomUUID(),
+            contentType,
+            contentKey,
+            payload,
+          });
+          if (scope === scopeVersion.current)
+            setState(version === editVersion.current ? "saved" : "unsaved");
+          return true;
+        } catch {
+          if (scope === scopeVersion.current && version === editVersion.current)
+            setState("error");
+          return false;
+        }
+      });
+      saveQueue.current = operation;
+      return operation;
     },
     [contentType, contentKey],
   );
   const setValue = useCallback(
     (next: T | ((current: T) => T)) => {
+      if (locked.current) return;
       const resolved =
         typeof next === "function"
           ? (next as (v: T) => T)(valueRef.current)
@@ -98,6 +111,16 @@ export function useDraft<T>(
     setLoading(false);
     setRevision((current) => current + 1);
   }, []);
+  // Drain older autosaves before publishing/deleting a draft. While locked,
+  // keyboard saves cannot recreate that draft after publication completes.
+  const lockAndSave = useCallback(() => {
+    locked.current = true;
+    window.clearTimeout(timer.current);
+    return save(valueRef.current, true);
+  }, [save]);
+  const unlock = useCallback(() => {
+    locked.current = false;
+  }, []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
@@ -116,5 +139,15 @@ export function useDraft<T>(
     };
   }, [save, state]);
   useEffect(() => () => window.clearTimeout(timer.current), []);
-  return { value, setValue, state, save, reset, loading, revision };
+  return {
+    value,
+    setValue,
+    state,
+    save,
+    reset,
+    loading,
+    revision,
+    lockAndSave,
+    unlock,
+  };
 }

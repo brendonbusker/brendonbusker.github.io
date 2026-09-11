@@ -22,6 +22,8 @@ import { api, draftsApi, publishedApi, type PublishedItem } from "../api";
 import { SaveStatus } from "./SaveStatus";
 import { ResumePdfPanel } from "./ResumePdfPanel";
 import { ResumeAdditionalFields } from "./ResumeAdditionalFields";
+import { ResumeWebPreview } from "./ResumeWebPreview";
+import { CommaListInput } from "./CommaListInput";
 export function ResumeEditor() {
   const [published, setPublished] = useState<PublishedItem<Resume>>({
     content: seedResume,
@@ -29,21 +31,30 @@ export function ResumeEditor() {
     sha: "",
   });
   const [syncing, setSyncing] = useState(true);
-  const { value, setValue, state, reset, loading } = useDraft<Resume>(
-    "resume",
-    "main",
-    published.content,
-    published.sha,
-  );
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [publishing, setPublishing] = useState(false);
+  const publishLock = useRef(false);
+  const { value, setValue, state, reset, loading, lockAndSave, unlock } =
+    useDraft<Resume>(
+      "resume",
+      "main",
+      published.content,
+      published.sha,
+      !syncing && !!published.sha,
+    );
   const [preview, setPreview] = useState(false);
   const [message, setMessage] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     let alive = true;
+    setSyncing(true);
     publishedApi
       .one<Resume>("resume")
       .then((item) => {
-        if (alive) setPublished(item);
+        if (alive) {
+          setPublished(item);
+          setMessage("");
+        }
       })
       .catch((error) => {
         if (alive)
@@ -59,7 +70,8 @@ export function ResumeEditor() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [loadAttempt]);
+  const ready = !syncing && !loading && !!published.sha;
   const set = (key: keyof Resume, v: unknown) =>
     setValue((r) => ({
       ...r,
@@ -78,6 +90,9 @@ export function ResumeEditor() {
     set("experience", copy);
   };
   const publish = async () => {
+    if (!ready || publishLock.current) return;
+    publishLock.current = true;
+    setPublishing(true);
     try {
       const valid = resumeSchema.parse({
         ...value,
@@ -85,20 +100,44 @@ export function ResumeEditor() {
           ...item,
           accomplishments: item.accomplishments.filter((line) => line.trim()),
         })),
+        selectedWork: value.selectedWork.map((item) => ({
+          ...item,
+          techStack: (item.techStack || []).filter((text) => text.trim()),
+          accomplishments: (item.accomplishments || []).filter((line) =>
+            line.trim(),
+          ),
+        })),
       });
+      if (!(await lockAndSave()))
+        throw new Error(
+          "Could not save your draft. Your edits are still here; try publishing again.",
+        );
       const result = await draftsApi.publish("resume", valid, {
-        expectedSha: published.sha || undefined,
+        expectedSha: published.sha,
       });
-      await draftsApi.remove("resume", "main");
+      let draftCleared = true;
+      try {
+        await draftsApi.remove("resume", "main");
+      } catch {
+        draftCleared = false;
+      }
       setPublished({
         content: valid,
         path: result.path,
         sha: result.contentSha,
       });
       reset(valid);
-      setMessage("Published to GitHub. Follow the publication status above.");
+      setMessage(
+        draftCleared
+          ? "Published to GitHub. Follow the publication status above."
+          : "Published to GitHub, but the saved draft could not be cleared. Follow the publication status above.",
+      );
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Could not publish.");
+    } finally {
+      unlock();
+      publishLock.current = false;
+      setPublishing(false);
     }
   };
   const uploadPdf = async (file?: File) => {
@@ -128,8 +167,15 @@ export function ResumeEditor() {
           <p className="source-status">
             {syncing || loading
               ? "Loading current content from GitHub…"
-              : "Current published content loaded from GitHub"}
+              : published.sha
+                ? "Current published content loaded from GitHub"
+                : "Could not load the current published résumé"}
           </p>
+          {!syncing && !published.sha && (
+            <Button onClick={() => setLoadAttempt((n) => n + 1)}>
+              Retry loading résumé
+            </Button>
+          )}
         </div>
         <div>
           <input
@@ -142,74 +188,36 @@ export function ResumeEditor() {
           <Button
             icon={<DocumentPdf20Regular />}
             onClick={() => fileRef.current?.click()}
+            disabled={publishing}
           >
             Replace PDF
           </Button>
-          <Button icon={<Eye20Regular />} onClick={() => setPreview(!preview)}>
+          <Button
+            icon={<Eye20Regular />}
+            onClick={() => setPreview(!preview)}
+            disabled={!ready || publishing}
+          >
             {preview ? "Edit" : "Preview"}
           </Button>
           <Button
             appearance="primary"
             icon={<Send20Regular />}
             onClick={publish}
-            disabled={syncing || loading}
+            disabled={!ready || publishing}
           >
-            Publish
+            {publishing ? "Publishing…" : "Publish"}
           </Button>
         </div>
       </header>
-      <ResumePdfPanel
-        value={value}
-        ready={!syncing && !loading && !!published.sha}
-      />
+      <ResumePdfPanel value={value} ready={ready && !publishing} />
       {preview ? (
-        <div className="resume-preview">
-          <aside>
-            <h2>{value.fullName}</h2>
-            <p className="preview-headline">{value.headline}</p>
-            <p>{value.summary}</p>
-            <h3>Skills</h3>
-            {value.skillGroups.map((g) => (
-              <p>
-                <b>{g.name}</b>
-                <br />
-                {g.skills.join(" · ")}
-              </p>
-            ))}
-          </aside>
-          <main>
-            <h3>Experience</h3>
-            {value.experience.map((x) => (
-              <article>
-                <div>
-                  <h4>{x.role}</h4>
-                  <p>{x.employer}</p>
-                </div>
-                <small>
-                  {x.startDate} — {x.current ? "Present" : x.endDate}
-                </small>
-                <ul>
-                  {x.accomplishments
-                    .filter((a) => a.trim())
-                    .map((a) => (
-                      <li>{a}</li>
-                    ))}
-                </ul>
-              </article>
-            ))}
-            <h3>Education</h3>
-            {value.education.map((x) => (
-              <article>
-                <h4>{x.school}</h4>
-                <p>
-                  {x.degree}, {x.field}
-                </p>
-              </article>
-            ))}
-          </main>
-        </div>
+        <ResumeWebPreview value={value} />
       ) : (
-        <div className="resume-form">
+        <fieldset
+          className="resume-form"
+          disabled={!ready || publishing}
+          aria-label="Résumé fields"
+        >
           <section>
             <h2>Basic information</h2>
             <div className="two-fields">
@@ -488,20 +496,17 @@ export function ResumeEditor() {
                     )
                   }
                 />
-                <Input
-                  value={group.skills.join(", ")}
+                <CommaListInput
+                  items={group.skills}
                   aria-label={`${group.name} skills`}
-                  onChange={(_, d) =>
+                  onItemsChange={(skills) =>
                     set(
                       "skillGroups",
                       value.skillGroups.map((g, n) =>
                         n === i
                           ? {
                               ...g,
-                              skills: d.value
-                                .split(",")
-                                .map((s) => s.trim())
-                                .filter(Boolean),
+                              skills,
                             }
                           : g,
                       ),
@@ -512,7 +517,7 @@ export function ResumeEditor() {
             ))}
           </section>
           <ResumeAdditionalFields value={value} set={set} />
-        </div>
+        </fieldset>
       )}
       {message && (
         <div
