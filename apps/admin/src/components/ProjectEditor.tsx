@@ -199,15 +199,13 @@ export function ProjectEditor() {
     published.find(
       ({ content }) => content.slug === contentKey || content.id === contentKey,
     )?.sha ?? "";
-  const { value, setValue, state, reset, loading } = useDraft<Project>(
-    "project",
-    contentKey,
-    initial,
-    sourceVersion,
-  );
+  const { value, setValue, state, reset, loading, lockAndSave, unlock } =
+    useDraft<Project>("project", contentKey, initial, sourceVersion);
   const [preview, setPreview] = useState(false);
   const [editingPageIntro, setEditingPageIntro] = useState(false);
   const [message, setMessage] = useState("");
+  const [publishing, setPublishing] = useState(false);
+  const publishLock = useRef(false);
   const imageRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     let alive = true;
@@ -233,17 +231,39 @@ export function ProjectEditor() {
   }, []);
   const set = (key: keyof Project, v: unknown) =>
     setValue((p) => ({ ...p, [key]: v, updatedAt: new Date().toISOString() }));
-  const publish = async () => {
+  const savedSource = published.find(({ content }) => content.id === value.id);
+  const publish = async (visible = true) => {
+    if (syncing || loading || publishLock.current) return;
+    if (
+      !visible &&
+      !confirm(
+        `Hide "${value.title}" from the public website? You can publish it again later.`,
+      )
+    )
+      return;
+    publishLock.current = true;
+    setPublishing(true);
+    setMessage("");
     try {
-      const valid = projectSchema.parse(value);
+      // Publish is an explicit visibility action, independent of old hidden drafts.
+      const valid = projectSchema.parse({ ...value, published: visible });
       const source = published.find(
         ({ content }) => content.id === valid.id || content.slug === contentKey,
       );
+      if (!(await lockAndSave()))
+        throw new Error(
+          "Could not save your draft. Your edits are still here; try publishing again.",
+        );
       const result = await draftsApi.publish("project", valid, {
         expectedSha: source?.sha || undefined,
         targetPath: source?.path || undefined,
       });
-      await draftsApi.remove("project", contentKey);
+      let draftCleared = true;
+      try {
+        await draftsApi.remove("project", contentKey);
+      } catch {
+        draftCleared = false;
+      }
       const nextItem = {
         content: valid,
         path: result.path,
@@ -256,9 +276,15 @@ export function ProjectEditor() {
       );
       setContentKey(valid.slug);
       reset(valid);
-      setMessage("Published to GitHub. Follow the publication status above.");
+      setMessage(
+        `${visible ? "Published to the website" : "Project hidden from the website"}. Follow the publication status above for deployment.${draftCleared ? "" : " The saved draft could not be cleared."}`,
+      );
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Could not publish.");
+    } finally {
+      unlock();
+      publishLock.current = false;
+      setPublishing(false);
     }
   };
   const deleteProject = async () => {
@@ -312,7 +338,12 @@ export function ProjectEditor() {
   if (editingPageIntro)
     return <ProjectPageEditor onBack={() => setEditingPageIntro(false)} />;
   return (
-    <div className="workspace-page form-page">
+    <fieldset
+      className="workspace-page form-page"
+      aria-label="Project editor"
+      disabled={publishing}
+      style={{ border: 0, minWidth: 0 }}
+    >
       <header className="command-header">
         <div>
           <p className="page-label">Projects</p>
@@ -323,6 +354,13 @@ export function ProjectEditor() {
               ? "Loading current projects from GitHub…"
               : "Published projects loaded from GitHub"}
           </p>
+          {!syncing && !loading && (
+            <p className="source-status">
+              {savedSource?.content.published
+                ? "Visible on the website after deployment. Publish applies your changes."
+                : "Not listed on the website. Publish makes this project visible."}
+            </p>
+          )}
         </div>
         <div>
           <Button onClick={() => setEditingPageIntro(true)}>
@@ -375,11 +413,19 @@ export function ProjectEditor() {
           <Button
             appearance="primary"
             icon={<Send20Regular />}
-            onClick={publish}
-            disabled={syncing || loading}
+            onClick={() => void publish()}
+            disabled={syncing || loading || publishing}
           >
-            Publish
+            {publishing ? "Saving…" : "Publish"}
           </Button>
+          {savedSource?.content.published && (
+            <Button
+              onClick={() => void publish(false)}
+              disabled={syncing || loading || publishing}
+            >
+              Hide from website
+            </Button>
+          )}
           <Button
             appearance="subtle"
             icon={<Delete20Regular />}
@@ -504,11 +550,6 @@ export function ProjectEditor() {
                 label="Featured"
                 checked={value.featured}
                 onChange={(_, d) => set("featured", !!d.checked)}
-              />
-              <Checkbox
-                label="Published"
-                checked={value.published}
-                onChange={(_, d) => set("published", !!d.checked)}
               />
             </div>
           </section>
@@ -647,7 +688,11 @@ export function ProjectEditor() {
           </section>
         </div>
       )}
-      {message && <div className="publish-message">{message}</div>}
-    </div>
+      {message && (
+        <div className="publish-message" role="status">
+          {message}
+        </div>
+      )}
+    </fieldset>
   );
 }

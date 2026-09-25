@@ -6,7 +6,7 @@ summary: "Macro Studio is a simple free solution for creating macros via keyboar
 category: "Desktop Application"
 status: "Release 1.0"
 featured: false
-published: false
+published: true
 sortOrder: 0
 liveUrl: "https://github.com/brendonbusker/Windows-Macro-Studio/releases"
 githubUrl: "https://github.com/brendonbusker/Windows-Macro-Studio"
