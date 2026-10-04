@@ -11,6 +11,9 @@ export function useDraft<T>(
 ) {
   const [value, setValueState] = useState(initial);
   const [state, setState] = useState<SaveState>("idle");
+  const [saveError, setSaveError] = useState("");
+  const saveErrorRef = useRef("");
+  const getSaveError = useCallback(() => saveErrorRef.current, []);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -35,6 +38,8 @@ export function useDraft<T>(
     valueRef.current = initialRef.current;
     setValueState(initialRef.current);
     setState("idle");
+    saveErrorRef.current = "";
+    setSaveError("");
     setLoading(true);
     setLoadError("");
     let loaded = false;
@@ -93,12 +98,22 @@ export function useDraft<T>(
             contentKey,
             payload,
           });
-          if (scope === scopeVersion.current)
+          if (scope === scopeVersion.current) {
+            saveErrorRef.current = "";
+            setSaveError("");
             setState(version === editVersion.current ? "saved" : "unsaved");
+          }
           return true;
-        } catch {
-          if (scope === scopeVersion.current && version === editVersion.current)
-            setState("error");
+        } catch (error) {
+          if (scope === scopeVersion.current) {
+            const reason =
+              error instanceof Error
+                ? error.message
+                : "The draft could not be saved.";
+            saveErrorRef.current = reason;
+            setSaveError(reason);
+            if (version === editVersion.current) setState("error");
+          }
           return false;
         }
       });
@@ -133,6 +148,8 @@ export function useDraft<T>(
     hydrated.current = true;
     setValueState(next);
     setState("idle");
+    saveErrorRef.current = "";
+    setSaveError("");
     setLoading(false);
     setLoadError("");
     setRevision((current) => current + 1);
@@ -170,6 +187,8 @@ export function useDraft<T>(
     value,
     setValue,
     state,
+    saveError,
+    getSaveError,
     save,
     reset,
     loading,

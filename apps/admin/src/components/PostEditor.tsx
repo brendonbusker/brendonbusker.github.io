@@ -271,6 +271,8 @@ export function PostEditor({
     value: post,
     setValue,
     state,
+    saveError,
+    getSaveError,
     save,
     reset,
     loading,
@@ -475,7 +477,7 @@ export function PostEditor({
       try {
         if (!(await lockAndSave())) {
           setMessage(
-            "Could not save this draft. Your edits are still here. Retry saving before leaving.",
+            `Could not save this draft. ${getSaveError()} Your edits are still here. Retry saving before leaving.`,
           );
           return false;
         }
@@ -490,7 +492,7 @@ export function PostEditor({
         setSwitching(false);
       }
     },
-    [lockAndSave, post, selected, state, unlock],
+    [lockAndSave, getSaveError, post, selected, state, unlock],
   );
   useEffect(() => {
     registerBeforeLeave?.(preserveCurrent);
@@ -522,7 +524,7 @@ export function PostEditor({
       });
       if (!(await lockAndSave()))
         throw new Error(
-          "Could not save this draft. Your edits are still here; retry before publishing.",
+          `Could not save this draft. ${getSaveError()} Your edits are still here; retry before publishing.`,
         );
       const source = publishedPosts.find(
         ({ content }) => content.id === valid.id,
@@ -575,7 +577,7 @@ export function PostEditor({
     try {
       if (!(await lockAndSave()))
         throw new Error(
-          "Could not save this draft. Your edits are still here; retry before deleting.",
+          `Could not save this draft. ${getSaveError()} Your edits are still here; retry before deleting.`,
         );
       let version = "";
       if (source) {
@@ -1059,7 +1061,7 @@ export function PostEditor({
             <span className="breadcrumb">
               {sectionLabel} / {post.title || `Untitled ${titleLabel}`}
             </span>
-            <SaveStatus state={state} />
+            <SaveStatus state={state} error={saveError} />
           </div>
           <div>
             <Button
@@ -1105,6 +1107,24 @@ export function PostEditor({
             </Tooltip>
           </div>
         </header>
+        {saveError && (
+          <div className="publish-message error draft-save-error" role="alert">
+            <p>{saveError} Your current document is still open here.</p>
+            <Button
+              disabled={mutationBlocked || state === "saving"}
+              onClick={() =>
+                void save().then((saved) => {
+                  if (saved)
+                    setMessage(
+                      "Draft saved. You can publish when you are ready.",
+                    );
+                })
+              }
+            >
+              Retry save
+            </Button>
+          </div>
+        )}
         {(syncError || loadError) && (
           <div className="publish-message error" role="alert">
             <p>

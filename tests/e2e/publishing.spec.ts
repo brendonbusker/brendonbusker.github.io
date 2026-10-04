@@ -34,6 +34,8 @@ for (const scenario of [
         await route.fulfill({
           json: { authenticated: true, csrfToken: "test" },
         });
+      } else if (path === "/api/config") {
+        await route.fulfill({ json: { turnstileSiteKey: "" } });
       } else if (path.startsWith("/api/deployment/")) {
         checks++;
         if (recovered || (scenario === "temporary" && checks > 2)) {
@@ -60,6 +62,11 @@ for (const scenario of [
     await page.goto("http://127.0.0.1:5173/");
     const banner = page.getByRole("region", { name: "Publication status" });
     if (scenario === "expired session") {
+      const dialog = page.getByRole("dialog", {
+        name: "Sign in again to save your work",
+      });
+      await expect(dialog).toBeVisible();
+      await dialog.getByRole("button", { name: "Return to editor" }).click();
       await expect(banner).toContainText("Your session has expired");
       await page.clock.fastForward(60001);
       expect(checks).toBe(1);

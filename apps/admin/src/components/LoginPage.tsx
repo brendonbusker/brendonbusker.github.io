@@ -7,32 +7,52 @@ declare global {
     turnstile?: {
       render: (el: HTMLElement, opts: Record<string, unknown>) => string;
       reset: (id: string) => void;
+      remove?: (id: string) => void;
     };
   }
 }
 export function LoginPage({
   onLogin,
+  recovery = false,
+  onCancel,
+  onBusyChange,
 }: {
   onLogin: (session: Session) => void;
+  recovery?: boolean;
+  onCancel?: () => void;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [siteKey, setSiteKey] = useState("");
+  const [challengeAttempt, setChallengeAttempt] = useState(0);
   const [challengeReady, setChallengeReady] = useState(false);
   const token = useRef("");
   const widget = useRef<HTMLDivElement>(null);
   const widgetId = useRef("");
   useEffect(() => {
-    api<{ turnstileSiteKey: string }>("/api/config").then((c) =>
-      setSiteKey(c.turnstileSiteKey),
-    );
-  }, []);
+    let alive = true;
+    api<{ turnstileSiteKey: string }>("/api/config")
+      .then((c) => {
+        if (alive) setSiteKey(c.turnstileSiteKey);
+      })
+      .catch(() => {
+        if (alive)
+          setError(
+            "The security check could not load. Retry the security check below.",
+          );
+      });
+    return () => {
+      alive = false;
+    };
+  }, [challengeAttempt]);
   useEffect(() => {
     if (!siteKey || !widget.current) return;
+    let alive = true;
     const render = () => {
-      if (window.turnstile && widget.current)
+      if (alive && window.turnstile && widget.current)
         widgetId.current = window.turnstile.render(widget.current, {
           sitekey: siteKey,
           theme: "light",
@@ -48,7 +68,7 @@ export function LoginPage({
             token.current = "";
             setChallengeReady(false);
             setError(
-              "The security check could not load. Refresh and try again.",
+              "The security check could not load. Retry the security check below.",
             );
           },
         });
@@ -61,10 +81,18 @@ export function LoginPage({
       script.async = true;
       script.onload = render;
       script.onerror = () =>
-        setError("The security check could not load. Refresh and try again.");
+        setError(
+          "The security check could not load. Retry the security check below.",
+        );
       window.document.head.appendChild(script);
     }
-  }, [siteKey]);
+    return () => {
+      alive = false;
+      if (widgetId.current) window.turnstile?.remove?.(widgetId.current);
+      widgetId.current = "";
+      token.current = "";
+    };
+  }, [siteKey, challengeAttempt]);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token.current) {
@@ -72,6 +100,7 @@ export function LoginPage({
       return;
     }
     setBusy(true);
+    onBusyChange?.(true);
     setError("");
     try {
       const session = await api<Session>("/api/auth/login", {
@@ -82,6 +111,14 @@ export function LoginPage({
           turnstileToken: token.current,
         }),
       });
+      if (
+        session.authenticated !== true ||
+        typeof session.csrfToken !== "string" ||
+        !session.csrfToken.trim()
+      )
+        throw new Error(
+          "Sign-in could not be confirmed. Your open document has been kept. Please try again.",
+        );
       setCsrf(session.csrfToken);
       onLogin(session);
     } catch (err) {
@@ -91,19 +128,25 @@ export function LoginPage({
       if (widgetId.current) window.turnstile?.reset(widgetId.current);
     } finally {
       setBusy(false);
+      onBusyChange?.(false);
     }
   };
   return (
-    <main className="login-page">
+    <main className={`login-page${recovery ? " login-recovery" : ""}`}>
       <form className="login-card" onSubmit={submit}>
         <div className="login-mark">
           <LockClosed24Regular />
         </div>
         <p className="product-name">Brendon Busker Publishing</p>
-        <h1>Sign in to edit the site</h1>
+        <h1>
+          {recovery
+            ? "Sign in again to save your work"
+            : "Sign in to edit the site"}
+        </h1>
         <p className="login-copy">
-          Your publishing workspace is private. Use the administrator
-          credentials created during setup.
+          {recovery
+            ? "Your sign-in or security token expired. Your document and unsaved edits are still open behind this window. After signing in, retry saving or publishing when you are ready."
+            : "Your publishing workspace is private. Use the administrator credentials created during setup."}
         </p>
         <Field label="Username" required>
           <Input
@@ -127,6 +170,18 @@ export function LoginPage({
             {error}
           </p>
         )}
+        {error.includes("security check could not load") && (
+          <Button
+            type="button"
+            onClick={() => {
+              setError("");
+              setChallengeReady(false);
+              setChallengeAttempt((attempt) => attempt + 1);
+            }}
+          >
+            Retry security check
+          </Button>
+        )}
         <Button
           appearance="primary"
           type="submit"
@@ -140,6 +195,11 @@ export function LoginPage({
             "Sign in"
           )}
         </Button>
+        {onCancel && (
+          <Button type="button" disabled={busy} onClick={onCancel}>
+            Return to editor
+          </Button>
+        )}
       </form>
     </main>
   );

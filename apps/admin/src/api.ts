@@ -5,8 +5,25 @@ export type Session = {
   expiresAt?: string;
 };
 let csrfToken = "";
+let sessionGeneration = 0;
+let authenticationRequired = false;
+const authenticationListeners = new Set<(required: boolean) => void>();
+function requireAuthentication(required: boolean) {
+  if (authenticationRequired === required) return;
+  authenticationRequired = required;
+  authenticationListeners.forEach((listener) => listener(required));
+}
+export function subscribeAuthentication(listener: (required: boolean) => void) {
+  authenticationListeners.add(listener);
+  listener(authenticationRequired);
+  return () => {
+    authenticationListeners.delete(listener);
+  };
+}
 export function setCsrf(value?: string) {
   csrfToken = value || "";
+  sessionGeneration += 1;
+  requireAuthentication(false);
 }
 export class ApiError extends Error {
   constructor(
@@ -18,6 +35,22 @@ export class ApiError extends Error {
   }
 }
 export async function api<T>(path: string, options: RequestInit = {}) {
+  const protectedRequest = ![
+    "/api/auth/login",
+    "/api/session",
+    "/api/config",
+  ].includes(path);
+  const requestGeneration = sessionGeneration;
+  if (
+    protectedRequest &&
+    authenticationRequired &&
+    options.method &&
+    !["GET", "HEAD"].includes(options.method)
+  )
+    throw new ApiError(
+      "Your session has expired. Sign in again to save your work.",
+      401,
+    );
   const tracksPublish =
     (options.method === "POST" && path.startsWith("/api/publish")) ||
     (options.method === "DELETE" &&
@@ -43,13 +76,27 @@ export async function api<T>(path: string, options: RequestInit = {}) {
     const data = (await response.json().catch(() => ({
       error: "The server returned an unreadable response.",
     }))) as Record<string, unknown>;
-    if (!response.ok)
+    if (!response.ok) {
+      const expiredSecurityToken =
+        response.status === 403 &&
+        (data.code === "csrf_expired" ||
+          data.error === "Security token expired. Refresh and try again.");
+      if (
+        (response.status === 401 || expiredSecurityToken) &&
+        protectedRequest &&
+        requestGeneration === sessionGeneration
+      )
+        requireAuthentication(true);
+      if (expiredSecurityToken)
+        data.error =
+          "Your security token has expired. Sign in again to save your work.";
       throw new ApiError(
         typeof data.error === "string"
           ? data.error
           : `Request failed (${response.status})`,
         response.status,
       );
+    }
     if (id) {
       if (
         typeof data.version === "string" &&

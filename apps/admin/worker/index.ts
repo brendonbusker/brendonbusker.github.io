@@ -364,7 +364,10 @@ app.use("/api/*", async (c, next) => {
     if (!csrf || !timingSafeEqualText(await sha256(csrf), session.csrf_hash)) {
       await securityEvent(c.env, c.req.raw, "csrf_failure");
       return c.json(
-        { error: "Security token expired. Refresh and try again." },
+        {
+          error: "Security token expired. Sign in again to continue.",
+          code: "csrf_expired",
+        },
         403,
       );
     }

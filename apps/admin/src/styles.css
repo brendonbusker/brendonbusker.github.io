@@ -1722,3 +1722,48 @@ fieldset.metadata-strip {
     flex-wrap: wrap;
   }
 }
+
+.session-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--admin-border-strong);
+  background: var(--admin-surface-alt);
+}
+.session-warning p,
+.draft-save-error p {
+  margin: 4px 0 8px;
+}
+.draft-save-error {
+  position: static;
+  max-width: none;
+  margin: 16px 24px;
+  box-shadow: none;
+  z-index: auto;
+}
+.session-warning > button {
+  flex-shrink: 0;
+}
+.session-login-dialog {
+  width: min(480px, calc(100vw - 32px));
+  padding: 0;
+}
+.session-login-dialog .login-page {
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+}
+.session-login-dialog .login-card {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  border: 0;
+  box-shadow: none;
+}
+@media (max-width: 620px) {
+  .session-warning {
+    flex-wrap: wrap;
+  }
+}

@@ -6,8 +6,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { FluentProvider, Spinner } from "@fluentui/react-components";
-import { api, setCsrf, type Session } from "./api";
+import {
+  Button,
+  Dialog,
+  DialogSurface,
+  FluentProvider,
+  Spinner,
+} from "@fluentui/react-components";
+import { api, setCsrf, subscribeAuthentication, type Session } from "./api";
 import { LoginPage } from "./components/LoginPage";
 import { AdminShell } from "./components/AdminShell";
 import { Dashboard } from "./components/Dashboard";
@@ -46,6 +52,22 @@ const Settings = lazy(() =>
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [page, setPage] = useState("home");
+  const [authenticationRequired, setAuthenticationRequired] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginBusy, setLoginBusy] = useState(false);
+  useEffect(
+    () =>
+      subscribeAuthentication((required) => {
+        setAuthenticationRequired(required);
+        setLoginOpen(required);
+      }),
+    [],
+  );
+  const signedIn = (next: Session) => {
+    setCsrf(next.csrfToken);
+    setSession(next);
+    setLoginOpen(false);
+  };
   const beforeLeave = useRef<(() => Promise<boolean>) | null>(null);
   const navigating = useRef(false);
   const registerBeforeLeave = useCallback(
@@ -97,7 +119,7 @@ export default function App() {
         <Spinner label="Opening publishing workspace…" />
       </div>
     );
-  else if (!session.authenticated) content = <LoginPage onLogin={setSession} />;
+  else if (!session.authenticated) content = <LoginPage onLogin={signedIn} />;
   else
     content = (
       <AdminShell
@@ -106,6 +128,20 @@ export default function App() {
         onLogout={logout}
       >
         <PublishingStatus />
+        {authenticationRequired && (
+          <section className="session-warning" aria-label="Sign-in required">
+            <div>
+              <strong>Please sign in again.</strong>
+              <p>
+                Your unsaved edits are still here. Sign in again, then retry
+                saving. Keep this tab open.
+              </p>
+            </div>
+            <Button appearance="primary" onClick={() => setLoginOpen(true)}>
+              Sign in again
+            </Button>
+          </section>
+        )}
         <Suspense
           fallback={
             <div className="app-loading">
@@ -135,5 +171,29 @@ export default function App() {
         </Suspense>
       </AdminShell>
     );
-  return <FluentProvider theme={theme.fluent}>{content}</FluentProvider>;
+  return (
+    <FluentProvider theme={theme.fluent}>
+      {content}
+      {session?.authenticated && (
+        <Dialog
+          open={loginOpen}
+          onOpenChange={(_, data) => {
+            if (!loginBusy || data.open) setLoginOpen(data.open);
+          }}
+        >
+          <DialogSurface
+            className="session-login-dialog"
+            aria-label="Sign in again to save your work"
+          >
+            <LoginPage
+              recovery
+              onBusyChange={setLoginBusy}
+              onLogin={signedIn}
+              onCancel={() => setLoginOpen(false)}
+            />
+          </DialogSurface>
+        </Dialog>
+      )}
+    </FluentProvider>
+  );
 }
