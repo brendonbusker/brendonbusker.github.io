@@ -1,0 +1,140 @@
+---
+import { getCollection } from 'astro:content';
+import { recipeMeals } from '@brendon/shared';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { recipeIndexContent } from '../../lib/recipe-content';
+import { formatRecipeTime, mealLabels } from '../../lib/recipes';
+import '../../styles/recipes.css';
+
+const recipes = (await getCollection('recipes', ({ data }) => data.status === 'published'))
+  .sort((a, b) => a.data.title.localeCompare(b.data.title, 'en', { sensitivity: 'base' }));
+const entries = await Promise.all(recipes.map(async recipe => ({
+  recipe, ...await recipeIndexContent(recipe.body || ''),
+})));
+---
+<BaseLayout title="Recipes — Brendon Busker" description="My recipe collection. Find something to make for breakfast, lunch, dinner, or a snack." current="recipes">
+  <header class="recipe-intro">
+    <div><p class="eyebrow">From my kitchen</p><h1>Recipes</h1></div>
+    <p>A place for the recipes I want to keep.<br />Find something for your next meal.</p>
+  </header>
+  <div class="recipe-library">
+    <form class="recipe-search" role="search" aria-label="Recipes" hidden>
+      <label for="recipe-query">Find a recipe</label>
+      <div class="recipe-search-controls">
+        <input id="recipe-query" type="search" name="q" maxlength="200" placeholder="Search recipes, ingredients, or meal types" autocomplete="off" aria-controls="recipe-results" />
+        <button type="button" data-clear-recipes hidden>Clear filters</button>
+      </div>
+      <fieldset class="recipe-filters">
+        <legend>Browse by meal</legend>
+        <div>
+          <button type="button" data-meal-filter="" aria-pressed="true" aria-controls="recipe-results">All recipes</button>
+          {recipeMeals.map(meal => <button type="button" data-meal-filter={meal} aria-pressed="false" aria-controls="recipe-results">{mealLabels[meal]}</button>)}
+        </div>
+      </fieldset>
+      <p class="recipe-result-count" data-recipe-status role="status" aria-live="polite" aria-atomic="true"></p>
+    </form>
+    <div id="recipe-results" class="recipe-grid">
+      {entries.map(({ recipe, cover, searchHtml }) => {
+        const { data } = recipe;
+        const totalMinutes = data.prepMinutes !== undefined && data.cookMinutes !== undefined
+          ? data.prepMinutes + data.cookMinutes : undefined;
+        return <article class:list={['recipe-entry', { 'recipe-entry-text': !cover }]} data-meals={data.meals.join(' ')}>
+          <a class="recipe-entry-link" href={`/recipes/${data.slug}/`}>
+            {cover && <div class="recipe-cover"><img src={cover.src} alt={cover.alt} loading="lazy" decoding="async" /></div>}
+            <h2>{data.title}</h2>
+          </a>
+          <p class="recipe-meals">{data.meals.map(meal => mealLabels[meal]).join(' · ')}</p>
+          {data.excerpt && <p class="recipe-description">{data.excerpt}</p>}
+          {(totalMinutes !== undefined || data.servings) && <p class="recipe-entry-details">
+            {totalMinutes !== undefined && <span>{formatRecipeTime(totalMinutes)} total</span>}
+            {data.servings && <span>Servings: {data.servings}</span>}
+          </p>}
+          <template data-recipe-text set:html={searchHtml} />
+        </article>;
+      })}
+    </div>
+    <div class="recipe-empty" data-recipe-empty hidden>
+      <h2>No recipes found.</h2><p>Try another ingredient, choose a different meal, or clear the filters.</p>
+    </div>
+    {entries.length === 0 && <div class="recipe-empty" data-library-empty>
+      <svg width="56" height="56" viewBox="0 0 56 56" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M28 15C21 10 14 10 6 12v32c8-2 15-2 22 3 7-5 14-5 22-3V12c-8-2-15-2-22 3Z" /><path d="M28 15v32M12 20c4-1 7 0 10 1M12 27c4-1 7 0 10 1M34 21c3-1 6-2 10-1M34 28c3-1 6-2 10-1" /></svg>
+      <h2>The recipe book is just getting started.</h2><p>Recipes will appear here as I add them.<br />Breakfast, lunch, dinner, and everything in between.</p>
+    </div>}
+  </div>
+</BaseLayout>
+
+<script>
+  import { matchesSearch, normalizeSearch } from '../../lib/search';
+  import { recipeMeal, type RecipeMeal } from '../../lib/recipes';
+  const root = document.querySelector<HTMLElement>('.recipe-library');
+  if (root) {
+    const form = root.querySelector<HTMLFormElement>('form')!;
+    const input = root.querySelector<HTMLInputElement>('#recipe-query')!;
+    const clear = root.querySelector<HTMLButtonElement>('[data-clear-recipes]')!;
+    const filters = [...root.querySelectorAll<HTMLButtonElement>('[data-meal-filter]')];
+    const status = root.querySelector<HTMLElement>('[data-recipe-status]')!;
+    const empty = root.querySelector<HTMLElement>('[data-recipe-empty]')!;
+    const libraryEmpty = root.querySelector<HTMLElement>('[data-library-empty]');
+    const entries = [...root.querySelectorAll<HTMLElement>('.recipe-entry')].map(element => ({
+      element,
+      meals: (element.dataset.meals || '').split(' '),
+      text: normalizeSearch([
+        element.querySelector('h2')?.textContent,
+        element.querySelector('.recipe-description')?.textContent,
+        element.querySelector('.recipe-meals')?.textContent,
+        element.querySelector<HTMLTemplateElement>('template')?.content.textContent,
+      ].join(' ')),
+    }));
+    let meal: RecipeMeal | '' = '';
+    let timer: ReturnType<typeof setTimeout>;
+    const apply = (history: 'replace' | 'push' | false) => {
+      const query = input.value.slice(0, 200).trim();
+      let count = 0;
+      for (const entry of entries) {
+        entry.element.hidden = !(matchesSearch(entry.text, query) && (!meal || entry.meals.includes(meal)));
+        if (!entry.element.hidden) count++;
+      }
+      for (const filter of filters) filter.setAttribute('aria-pressed', String(filter.dataset.mealFilter === meal));
+      const filtered = Boolean(query || meal);
+      clear.hidden = !input.value && !meal;
+      empty.hidden = count !== 0 || !filtered;
+      if (libraryEmpty) libraryEmpty.hidden = filtered;
+      status.textContent = `${count} ${count === 1 ? 'recipe' : 'recipes'}${filtered ? ' found' : ''}`;
+      if (history) {
+        const url = new URL(window.location.href);
+        if (query) url.searchParams.set('q', query); else url.searchParams.delete('q');
+        if (meal) url.searchParams.set('meal', meal); else url.searchParams.delete('meal');
+        if (url.href !== window.location.href) {
+          window.history[history === 'push' ? 'pushState' : 'replaceState'](window.history.state, '', url);
+        }
+      }
+    };
+    const restoreFilters = () => {
+      clearTimeout(timer);
+      const params = new URL(window.location.href).searchParams;
+      input.value = (params.get('q') || '').slice(0, 200);
+      meal = recipeMeal(params.get('meal'));
+      apply(false);
+    };
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => apply('replace'), 150);
+    });
+    form.addEventListener('submit', event => { event.preventDefault(); clearTimeout(timer); apply('replace'); });
+    for (const filter of filters) filter.addEventListener('click', () => {
+      clearTimeout(timer);
+      meal = recipeMeal(filter.dataset.mealFilter || null);
+      apply('push');
+    });
+    clear.addEventListener('click', () => {
+      clearTimeout(timer);
+      input.value = '';
+      meal = '';
+      apply('push');
+      input.focus();
+    });
+    window.addEventListener('popstate', restoreFilters);
+    restoreFilters();
+    form.hidden = false;
+  }
+</script>

@@ -1638,3 +1638,87 @@ select {
   border: 1px solid var(--admin-border);
   background: white;
 }
+
+/* Recipes retain the familiar document tools with structured recipe metadata. */
+fieldset.metadata-strip {
+  margin: 0;
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px solid var(--admin-border, #d1d1d1);
+}
+.ribbon-fieldset {
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  border: 0;
+}
+.ribbon-fieldset:disabled {
+  opacity: 0.55;
+}
+.meal-types {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.meal-types legend {
+  font-weight: 600;
+}
+.meal-types p {
+  margin: 4px 0;
+  font-size: 12px;
+}
+.meal-types > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+.recipe-preview-meals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.recipe-preview-meals span {
+  border: 1px solid currentColor;
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.recipe-preview-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+}
+.recipe-preview-facts dt {
+  font-size: 12px;
+}
+.recipe-preview-facts dd {
+  margin: 3px 0 0;
+  font-weight: 600;
+}
+@media (max-width: 900px) {
+  .recipe-workspace {
+    height: auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .recipe-workspace .document-list {
+    display: block;
+    max-height: 300px;
+    overflow: auto;
+  }
+  .recipe-workspace .document-list > header {
+    justify-content: space-between;
+  }
+  .recipe-workspace .document-list > header h2,
+  .recipe-workspace .document-list > header button span,
+  .recipe-workspace .list-search,
+  .recipe-workspace .document-row span:last-child {
+    display: block;
+  }
+  .recipe-workspace .document-row {
+    justify-content: flex-start;
+  }
+  .recipe-workspace .editor-titlebar {
+    flex-wrap: wrap;
+  }
+}

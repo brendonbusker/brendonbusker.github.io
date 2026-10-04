@@ -20,7 +20,8 @@ export class ApiError extends Error {
 export async function api<T>(path: string, options: RequestInit = {}) {
   const tracksPublish =
     (options.method === "POST" && path.startsWith("/api/publish")) ||
-    (options.method === "DELETE" && path === "/api/published/posts");
+    (options.method === "DELETE" &&
+      ["/api/published/posts", "/api/published/recipes"].includes(path));
   const id = tracksPublish ? crypto.randomUUID() : null;
   if (id)
     publishing.set({
@@ -123,7 +124,7 @@ export const publishedApi = {
   one: <T>(
     type: "homepage" | "resume" | "appearance" | "projects-page" | "blog-page",
   ) => api<PublishedItem<T>>(`/api/published/${type}`),
-  collection: <T>(type: "posts" | "projects") =>
+  collection: <T>(type: "posts" | "projects" | "recipes") =>
     api<{ items: Array<PublishedItem<T>> }>(`/api/published/${type}`),
   removePost: (input: {
     path: string;
@@ -132,6 +133,16 @@ export const publishedApi = {
     title: string;
   }) =>
     api<{ commitUrl: string; version: string }>("/api/published/posts", {
+      method: "DELETE",
+      body: JSON.stringify(input),
+    }),
+  removeRecipe: (input: {
+    path: string;
+    expectedSha: string;
+    contentKey: string;
+    title: string;
+  }) =>
+    api<{ commitUrl: string; version: string }>("/api/published/recipes", {
       method: "DELETE",
       body: JSON.stringify(input),
     }),

@@ -85,6 +85,21 @@ export const postSchema = z.object({
   status: z.enum(["draft", "published"]).default("draft"),
 });
 
+export const recipeMeals = ["breakfast", "lunch", "dinner", "snack"] as const;
+export const recipeSchema = postSchema.extend({
+  meals: z
+    .array(z.enum(recipeMeals))
+    .min(1, "Choose at least one meal type")
+    .max(recipeMeals.length)
+    .refine(
+      (meals) => new Set(meals).size === meals.length,
+      "Meal types must be unique",
+    ),
+  prepMinutes: z.number().int().min(0).max(10_080).optional(),
+  cookMinutes: z.number().int().min(0).max(10_080).optional(),
+  servings: z.string().trim().max(60).optional().default(""),
+});
+
 export const projectSchema = z.object({
   schemaVersion: z.literal(1).default(1),
   id: z.string().uuid(),
@@ -188,6 +203,7 @@ export const draftSchema = z.object({
   id: z.string().uuid(),
   contentType: z.enum([
     "post",
+    "recipe",
     "project",
     "homepage",
     "resume",
@@ -203,6 +219,7 @@ export const draftSchema = z.object({
 export const publishPayloadSchema = z.object({
   contentType: z.enum([
     "post",
+    "recipe",
     "project",
     "homepage",
     "resume",
@@ -220,6 +237,7 @@ export type PublicThemeChoice = z.infer<typeof publicThemeChoiceSchema>;
 export type ProjectPage = z.infer<typeof projectPageSchema>;
 export type BlogPage = z.infer<typeof blogPageSchema>;
 export type Post = z.infer<typeof postSchema>;
+export type Recipe = z.infer<typeof recipeSchema>;
 export type Project = z.infer<typeof projectSchema>;
 export type Resume = z.infer<typeof resumeSchema>;
 
@@ -234,6 +252,7 @@ export function slugify(input: string) {
 }
 export function validateContent(type: string, payload: unknown) {
   if (type === "post") return postSchema.parse(payload);
+  if (type === "recipe") return recipeSchema.parse(payload);
   if (type === "project") return projectSchema.parse(payload);
   if (type === "homepage") return siteProfileSchema.parse(payload);
   if (type === "resume") return resumeSchema.parse(payload);

@@ -1,12 +1,28 @@
 # Personal Homepage / Private CMS — Agent Handoff
 
-Last updated: October 4, 2026 (Linux migration audit)
+Last updated: October 4, 2026 (Linux setup and Recipes implementation)
 
 Repository: `brendonbusker/brendonbusker.github.io`
 
 Production branch: `main`
 
 Development handoff branch: `linux-migration` (do not deploy during migration)
+
+## Recipes development — October 4, 2026
+
+The user approved releasing Recipes to `main` on October 4. The public site deploys automatically on that push; the private CMS requires a separate migration and Worker deployment. The public `/recipes/` gallery supports multiple Breakfast/Lunch/Dinner/Snack labels, optional prep/cook minutes and servings, alphabetical browsing, combined full-text search and meal filters, shareable filter URLs, and a no-JavaScript fallback. Individual `/recipes/<slug>/` pages render rich recipe content and have a print layout. The first image supplies the gallery cover; recipes without images remain supported. No sample recipes are published or committed as user content.
+
+Admin → Recipes reuses the complete Blog editor with recipe-specific metadata. Photos, original animated GIFs, clipboard image/text paste, rich formatting, previews, drafts, publishing, reopening, and confirmed deletion use the existing protected API model. Draft saves are drained before publishing or changing documents/sections; failed saves retain edits. Published recipe slugs stay fixed when titles change. `recipeSchema`, repository path allowlists, and Worker serialization cover the new content and media paths. Public recipe content remains static and independent of Cloudflare.
+
+Recipe libraries load their Markdown and actual blob SHAs in one bounded GitHub GraphQL request, supporting hundreds of entries without one Worker subrequest per recipe. New recipe creation checks IDs and URLs against an immutable branch snapshot, then uses `createCommitOnBranch` with that expected head. A concurrent publication or an uncertain response requires reopening/retrying explicitly; the Worker never retries writes automatically. Updates keep the existing per-file Contents API SHA check. These GraphQL operations use the same repository Contents token permission.
+
+**Release prerequisite:** apply `apps/admin/migrations/0002_recipe_drafts.sql` before deploying the updated Worker. It rebuilds the draft table to permit recipes and all existing application content types while retaining existing draft records and their indexes. No new credentials, secrets, or D1 database are needed. Remote migration and deployment still require an explicit release request. Linux GitHub push authentication and Wrangler login were missing during bootstrap; configure them before authorized remote operations.
+
+The manual admin deployment workflow now applies pending remote D1 migrations before deploying, using its existing Cloudflare secrets, and stops if migration fails. Pushing `main` does not dispatch this workflow. The connected GitHub account can publish this release even though terminal Git credentials are absent. Wrangler login or a configured, authenticated manual Actions deployment is still needed for the private CMS release.
+
+The new browser tests use mocked CMS APIs and an isolated copied Astro project with temporary content fixtures, including a collection with over one hundred recipes. The copied project has separate content/build caches and is removed after building; test fixtures never enter the real content directory. The resulting test output lives under ignored `tmp/`. The bootstrap identified an existing Projects introduction load/edit race in `tests/e2e/admin.spec.ts`; it is unrelated to Recipes and remains a separate follow-up.
+
+Final Linux verification: `pnpm lint`, `pnpm typecheck`, all 79 unit tests, all 51 browser tests (`--workers=2`), and production site/admin builds passed. The local D1 database applied both migrations successfully; production D1 was not touched. The normal site build contains 16 pages and only the empty Recipes index, with no QA fixtures. Existing published content/media and the dependency lockfile remain unchanged. No required private project-file transfers were found; `.dev.vars` remains absent and is only needed for optional real local Worker integration. Live GitHub/Cloudflare publishing was not exercised; API tests use mocks.
 
 ## Read this first
 
@@ -81,7 +97,7 @@ Published sources:
 - Hono Cloudflare Worker.
 - Serves admin assets and same-origin protected APIs.
 - D1 stores drafts, sessions, and bounded security events.
-- GitHub Contents API publishes only schema-validated, server-allowlisted paths.
+- GitHub Contents API and atomic recipe-creation commits publish only schema-validated, server-allowlisted paths.
 - Uses expected GitHub SHAs for safe optimistic updates.
 - Media signatures, sizes, extensions, paths, URLs, Markdown/HTML, origins, CSRF, sessions, and login abuse controls are validated server-side.
 
@@ -273,14 +289,15 @@ Run merges with a clean worktree; if local and remote development branches diver
 
 ## Known limitations and unfinished work
 
-No application implementation is left uncommitted. The following are follow-up areas from source inspection, not changes made in the migration:
+The following are separate follow-up areas from the earlier source inspection:
 
 1. **Prioritize project load-failure handling.** `ProjectEditor.tsx` initially uses seed projects, reports a failed published-project fetch, then clears `syncing`. Unlike the résumé editor, it does not retain a successful-load requirement before publishing. Replace that fallback with a read-only error/retry state so a failed read cannot encourage publishing stale data. The separate project introduction editor already requires its loaded source SHA.
 2. **Prioritize project draft recovery and navigation.** The project selector is based on repository projects, not a full D1 draft listing. New unpublished drafts lack a discoverable library after leaving the editor. Audit switching projects with a pending autosave; the shared hook cancels pending timers when its scope changes. Add focused reproduction tests before changing behavior.
 3. **Clarify project Delete.** Its current action deletes the D1 draft, not the published Markdown file. Use Hide from website to remove public visibility. Improve the label/confirmation instead of implying published deletion.
 4. **Check project previews and renaming.** The preview uses stored screenshot paths directly; `/uploads/...` resolves against the admin origin rather than the public site. Verify/fix this in the editor. Changing the title also regenerates the slug; assess preservation of existing project deep links before allowing renames to alter URLs.
-5. **Audit remaining editor publication races.** Résumé and project publishing use the shared autosave lock/drain mechanism. Blog image uploads block publication, but the blog publish flow deserves the same edit/save concurrency review. This is a review target, not a reproduced new data-loss incident.
-6. **Linux bootstrap still needs to be exercised on Linux.** The password setup script's interactive mode is portable, but its `--generate` clipboard mode explicitly supports Windows only. Do not run credential setup as a migration step; it changes production secrets. Native dependencies and browser packages must be reinstalled on Linux.
+5. **Project introduction load/edit race.** Its fields accept input during initial loading and a late response can replace an early edit. The Linux baseline exposed this in the existing admin browser test. It remains outside the Recipes changes.
+
+The shared Blog/Recipes editor now uses autosave draining and edit locks during publication, and guards delayed clipboard cuts against document/selection changes. Linux bootstrap is complete with Node 24.13.0, pnpm 11.19.0, frozen dependencies and Playwright Chromium. The existing Linux libraries support local builds and browser tests; no production credential setup was run. The password setup script's `--generate` clipboard mode still supports Windows only.
 
 Uploads are separate immediate GitHub commits: an image uploaded while composing an unpublished draft can already become public. Private D1 drafts do not make uploaded media private. Original animated GIFs remain animated; a clipboard that supplies only a flattened PNG cannot preserve the missing frames.
 

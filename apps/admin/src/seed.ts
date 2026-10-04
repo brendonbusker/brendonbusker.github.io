@@ -1,4 +1,10 @@
-import type { Post, Project, Resume, SiteProfile } from "@brendon/shared";
+import type {
+  Post,
+  Recipe,
+  Project,
+  Resume,
+  SiteProfile,
+} from "@brendon/shared";
 export const newPost = (): Post => ({
   schemaVersion: 1,
   id: crypto.randomUUID(),
@@ -14,6 +20,11 @@ export const newPost = (): Post => ({
   excerpt: "",
   body: "",
   status: "draft",
+});
+export const newRecipe = (): Recipe => ({
+  ...newPost(),
+  meals: [],
+  servings: "",
 });
 export const seedProject: Project = {
   schemaVersion: 1,

@@ -282,7 +282,7 @@ a:hover {
 }
 .site-header nav {
   display: flex;
-  gap: clamp(1.2rem, 4vw, 3rem);
+  gap: clamp(1rem, 3vw, 2.5rem);
 }
 .site-header nav a {
   position: relative;
@@ -1220,6 +1220,9 @@ body.dialog-open {
   margin: 1rem 0 3rem;
 }
 @media (max-width: 900px) {
+  .site-header {
+    column-gap: 1.5rem;
+  }
   .recent-notes {
     margin-left: 0;
   }
@@ -1380,7 +1383,7 @@ body.dialog-open {
   }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 640px) {
   .site-header {
     flex-wrap: wrap;
   }
@@ -1390,5 +1393,15 @@ body.dialog-open {
   .header-actions {
     width: 100%;
     justify-content: space-between;
+    padding: 0.65rem 0 1rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .site-header nav {
+    gap: 0.7rem;
+  }
+  .site-header nav a {
+    font-size: 0.7rem;
   }
 }

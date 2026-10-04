@@ -2,10 +2,17 @@ import { Hono, type Context, type Next } from "hono";
 import sanitizeHtml from "sanitize-html";
 import { getDeploymentStatus } from "./deployment";
 import {
+  createRecipeFile,
+  readRecipeFiles,
+  readRecipeHead,
+  RecipePublishError,
+} from "./recipe-files";
+import {
   appearanceSchema,
   draftSchema,
   isAllowedRepositoryPath,
   postSchema,
+  recipeSchema,
   projectPageSchema,
   blogPageSchema,
   projectSchema,
@@ -56,6 +63,7 @@ type PublishedType =
   | "projects-page"
   | "blog-page"
   | "posts"
+  | "recipes"
   | "projects";
 type GitHubFile = {
   type: "file";
@@ -623,6 +631,27 @@ async function publishedCollection(env: Env, type: "posts" | "projects") {
   });
 }
 
+async function publishedRecipes(env: Env) {
+  const files = await readRecipeFiles(env, githubHeaders(env));
+  const identities = new Set<string>();
+  const items = files.map((file) => {
+    const parsed = parseManagedMarkdown(file.text);
+    const content = recipeSchema.parse({ ...parsed.data, body: parsed.body });
+    if (
+      file.path !== `apps/site/src/content/recipes/${content.slug}.md` ||
+      identities.has(content.id)
+    )
+      throw new Error("Invalid or duplicate published recipe identity.");
+    identities.add(content.id);
+    return { content, path: file.path, sha: file.sha };
+  });
+  return items.sort(
+    (left, right) =>
+      Date.parse(right.content.publishedAt) -
+      Date.parse(left.content.publishedAt),
+  );
+}
+
 async function lastFileUpdate(env: Env, path: string) {
   const query = new URLSearchParams({
     sha: env.GITHUB_BRANCH,
@@ -701,6 +730,9 @@ app.get("/api/published/:type", async (c) => {
       const content = schema.parse(JSON.parse(file.text));
       return c.json({ content, path: file.path, sha: file.sha });
     }
+    if (type === "recipes") {
+      return c.json({ items: await publishedRecipes(c.env) });
+    }
     if (type === "posts" || type === "projects")
       return c.json({ items: await publishedCollection(c.env, type) });
     return c.json({ error: "Unsupported published content type." }, 404);
@@ -763,6 +795,31 @@ export function serializeContent(
       message: `cms: publish post "${p.title}"`,
     };
   }
+  if (type === "recipe") {
+    const recipe = recipeSchema.parse(payload);
+    const metadata = [
+      `id: ${escapeYaml(recipe.id)}`,
+      `title: ${escapeYaml(recipe.title)}`,
+      `slug: ${escapeYaml(recipe.slug)}`,
+      `publishedAt: ${escapeYaml(recipe.publishedAt)}`,
+      `updatedAt: ${escapeYaml(recipe.updatedAt)}`,
+      `excerpt: ${escapeYaml(recipe.excerpt)}`,
+      "status: published",
+      `meals: ${JSON.stringify(recipe.meals)}`,
+      ...(recipe.prepMinutes === undefined
+        ? []
+        : [`prepMinutes: ${recipe.prepMinutes}`]),
+      ...(recipe.cookMinutes === undefined
+        ? []
+        : [`cookMinutes: ${recipe.cookMinutes}`]),
+      `servings: ${escapeYaml(recipe.servings)}`,
+    ];
+    return {
+      path: targetPath || `apps/site/src/content/recipes/${recipe.slug}.md`,
+      content: `---\n${metadata.join("\n")}\n---\n\n${sanitizePostBody(recipe.body)}\n`,
+      message: `cms: publish recipe "${recipe.title}"`,
+    };
+  }
   if (type === "project") {
     const p = projectSchema.parse(payload);
     const content = `---\nid: ${escapeYaml(p.id)}\ntitle: ${escapeYaml(p.title)}\nslug: ${escapeYaml(p.slug)}\nsummary: ${escapeYaml(p.summary)}\ncategory: ${escapeYaml(p.category || "")}\nstatus: ${escapeYaml(p.status || "")}\nfeatured: ${p.featured}\npublished: ${p.published}\nsortOrder: ${p.sortOrder}\nliveUrl: ${escapeYaml(p.liveUrl || "")}\ngithubUrl: ${escapeYaml(p.githubUrl || "")}\nicon: ${escapeYaml(p.icon)}\naccent: ${escapeYaml(p.accent)}\ntechStack: ${JSON.stringify(p.techStack)}\nscreenshots: ${JSON.stringify(p.screenshots)}\nwhy: ${escapeYaml(p.why || "")}\nfeatures: ${JSON.stringify(p.features)}\nimplementation: ${escapeYaml(p.implementation || "")}\ncreatedAt: ${p.createdAt.slice(0, 10)}\nupdatedAt: ${p.updatedAt.slice(0, 10)}\n---\n\n${sanitizeMarkdown(p.overview || p.summary)}\n`;
@@ -802,7 +859,7 @@ async function githubFile(
     );
   if (createOnly && current)
     throw new Error(
-      "A post already exists at this destination. Reopen it before editing.",
+      "An entry already exists at this destination. Reopen it before editing.",
     );
   const bytes = typeof content === "string" ? enc.encode(content) : content;
   const response = await fetch(base, {
@@ -862,7 +919,11 @@ async function githubDeleteFile(
   }>();
 }
 
-app.delete("/api/published/posts", async (c) => {
+app.delete("/api/published/:type", async (c) => {
+  const type = c.req.param("type");
+  if (type !== "posts" && type !== "recipes")
+    return c.json({ error: "Unsupported published content type." }, 404);
+  const contentType = type === "recipes" ? "recipe" : "post";
   try {
     const body = await c.req.json<{
       path?: string;
@@ -873,43 +934,61 @@ app.delete("/api/published/posts", async (c) => {
     const path = body.path || "";
     const expectedSha = body.expectedSha || "";
     const contentKey = body.contentKey || "";
-    const title = (body.title || "post").slice(0, 180);
+    const title = (body.title || contentType).slice(0, 180);
     if (
-      !path.startsWith("apps/site/src/content/posts/") ||
+      !path.startsWith(`apps/site/src/content/${type}/`) ||
       !path.endsWith(".md") ||
       !isAllowedRepositoryPath(path) ||
       !/^[0-9a-f]{40}$/i.test(expectedSha) ||
       !contentKey ||
       contentKey.length > 160
     )
-      return c.json({ error: "Invalid published post deletion request." }, 400);
+      return c.json(
+        { error: `Invalid published ${contentType} deletion request.` },
+        400,
+      );
+    if (type === "recipes") {
+      const existing = await githubTextFile(c.env, path);
+      const parsed = parseManagedMarkdown(existing.text);
+      const saved = recipeSchema.parse({
+        ...parsed.data,
+        body: parsed.body,
+      });
+      if (
+        saved.id !== contentKey ||
+        path !== `apps/site/src/content/recipes/${saved.slug}.md`
+      )
+        throw new Error("Published recipe identity does not match.");
+    }
     const result = await githubDeleteFile(
       c.env,
       path,
       expectedSha,
-      `cms: delete post "${title.replace(/[\r\n"]/g, "").trim()}"`,
+      `cms: delete ${contentType} "${title.replace(/[\r\n"]/g, "").trim()}"`,
     );
     await c.env.DB.prepare(
-      "DELETE FROM drafts WHERE content_type='post' AND content_key=?",
+      "DELETE FROM drafts WHERE content_type=? AND content_key=?",
     )
-      .bind(contentKey)
+      .bind(contentType, contentKey)
       .run();
-    await securityEvent(c.env, c.req.raw, "published_post_deleted", { path });
+    await securityEvent(c.env, c.req.raw, `published_${contentType}_deleted`, {
+      path,
+    });
     return c.json({
       commitUrl: result.commit.html_url,
       version: result.commit.sha,
-      publicUrl: publicUrl(c.env, "/blog/"),
+      publicUrl: publicUrl(c.env, type === "recipes" ? "/recipes/" : "/blog/"),
     });
   } catch (error) {
     const id = crypto.randomUUID();
     console.error(
-      "delete_post_error",
+      `delete_${contentType}_error`,
       id,
       error instanceof Error ? error.message : "unknown",
     );
     return c.json(
       {
-        error: `Published post deletion failed. Refresh and try again. Reference ${id}.`,
+        error: `Published ${contentType} deletion failed. Refresh and try again. Reference ${id}.`,
       },
       400,
     );
@@ -933,13 +1012,16 @@ app.post("/api/publish", async (c) => {
         400,
       );
     let valid = validateContent(body.contentType, body.payload);
+    let recipeCreationHead: string | undefined;
     if (body.targetPath) {
       const expectedPrefix =
         body.contentType === "post"
           ? "apps/site/src/content/posts/"
-          : body.contentType === "project"
-            ? "apps/site/src/content/projects/"
-            : "";
+          : body.contentType === "recipe"
+            ? "apps/site/src/content/recipes/"
+            : body.contentType === "project"
+              ? "apps/site/src/content/projects/"
+              : "";
       if (
         !expectedPrefix ||
         !body.targetPath.startsWith(expectedPrefix) ||
@@ -948,7 +1030,9 @@ app.post("/api/publish", async (c) => {
         throw new Error("Repository path rejected");
     }
     const targetPath =
-      body.contentType === "post" || body.contentType === "project"
+      body.contentType === "post" ||
+      body.contentType === "project" ||
+      body.contentType === "recipe"
         ? body.targetPath
         : undefined;
     if (body.contentType === "post") {
@@ -977,15 +1061,74 @@ app.post("/api/publish", async (c) => {
       }
       valid = { ...post, updatedAt: requestedAt.toISOString() };
     }
+    if (body.contentType === "recipe") {
+      const recipe = recipeSchema.parse(valid);
+      if (targetPath) {
+        if (!body.expectedSha || !/^[a-f0-9]{40}$/i.test(body.expectedSha))
+          throw new Error("The published recipe version is required.");
+        const existing = await githubTextFile(c.env, targetPath);
+        const saved = parseManagedMarkdown(existing.text);
+        if (
+          saved.data.id !== recipe.id ||
+          saved.data.slug !== recipe.slug ||
+          targetPath !== `apps/site/src/content/recipes/${recipe.slug}.md`
+        )
+          throw new Error("Published recipe identity or URL does not match.");
+        recipe.publishedAt = recipeSchema.parse({
+          ...saved.data,
+          body: saved.body,
+        }).publishedAt;
+      } else {
+        if (body.expectedSha)
+          throw new Error("The published recipe path is required.");
+        recipeCreationHead = await readRecipeHead(c.env, githubHeaders(c.env));
+        const snapshot = { ...c.env, GITHUB_BRANCH: recipeCreationHead };
+        const existingRecipes = await publishedRecipes(snapshot);
+        if (existingRecipes.some(({ content }) => content.id === recipe.id))
+          return c.json(
+            {
+              error:
+                "This recipe has already been published. Reopen it from Recipes before publishing changes.",
+            },
+            409,
+          );
+        if (existingRecipes.some(({ content }) => content.slug === recipe.slug))
+          return c.json(
+            {
+              error:
+                "A recipe already uses this URL. Reopen it from Recipes, or choose a different URL for a new recipe.",
+            },
+            409,
+          );
+        const profile = await githubTextFile(
+          snapshot,
+          "apps/site/src/data/site.json",
+        );
+        const { timezone } = siteProfileSchema.parse(JSON.parse(profile.text));
+        recipe.publishedAt = zonedTimestamp(requestedAt, timezone);
+      }
+      valid = { ...recipe, updatedAt: requestedAt.toISOString() };
+    }
     const item = serializeContent(body.contentType, valid, targetPath);
-    const result = await githubFile(
-      c.env,
-      item.path,
-      item.content,
-      item.message,
-      body.expectedSha,
-      body.contentType === "post" && !targetPath,
-    );
+    const result = recipeCreationHead
+      ? await createRecipeFile(
+          c.env,
+          githubHeaders(c.env),
+          {
+            path: item.path,
+            contents: b64(enc.encode(item.content)),
+            message: item.message,
+          },
+          recipeCreationHead,
+        )
+      : await githubFile(
+          c.env,
+          item.path,
+          item.content,
+          item.message,
+          body.expectedSha,
+          body.contentType === "post" && !targetPath,
+        );
     return c.json({
       commitUrl: result.commit.html_url,
       version: result.commit.sha,
@@ -998,21 +1141,25 @@ app.post("/api/publish", async (c) => {
               postSchema.parse(valid).publishedAt,
               postSchema.parse(valid).slug,
             )
-          : body.contentType === "project"
-            ? `/projects/?project=${encodeURIComponent(projectSchema.parse(valid).slug)}`
-            : body.contentType === "projectPage"
-              ? "/projects/"
-              : body.contentType === "blogPage"
-                ? "/blog/"
-                : body.contentType === "resume"
-                  ? "/resume/"
-                  : "/",
+          : body.contentType === "recipe"
+            ? `/recipes/${recipeSchema.parse(valid).slug}/`
+            : body.contentType === "project"
+              ? `/projects/?project=${encodeURIComponent(projectSchema.parse(valid).slug)}`
+              : body.contentType === "projectPage"
+                ? "/projects/"
+                : body.contentType === "blogPage"
+                  ? "/blog/"
+                  : body.contentType === "resume"
+                    ? "/resume/"
+                    : "/",
       ),
-      ...(body.contentType === "post"
+      ...(body.contentType === "post" || body.contentType === "recipe"
         ? { publishedAt: postSchema.parse(valid).publishedAt }
         : {}),
     });
   } catch (error) {
+    if (error instanceof RecipePublishError)
+      return c.json({ error: error.message }, 409);
     const id = crypto.randomUUID();
     console.error(
       "publish_error",
@@ -1049,7 +1196,7 @@ app.post("/api/publish/media/:kind/:slug", async (c) => {
   const kind = c.req.param("kind"),
     slug = c.req.param("slug");
   if (
-    !["posts", "projects"].includes(kind) ||
+    !["posts", "projects", "recipes"].includes(kind) ||
     !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)
   )
     return c.json({ error: "Invalid media destination." }, 400);

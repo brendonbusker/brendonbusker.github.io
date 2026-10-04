@@ -7,6 +7,15 @@ const avif =
   "AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZk1BMUIAAADrbWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAcGljdAAAAAAAAAAAAAAAAAAAAAAOcGl0bQAAAAAAAQAAAB5pbG9jAAAAAEQAAAEAAQAAAAEAAAETAAAAKgAAAChpaW5mAAAAAAABAAAAGmluZmUCAAAAAAEAAGF2MDFDb2xvcgAAAABqaXBycAAAAEtpcGNvAAAAFGlzcGUAAAAAAAAAEAAAABAAAAAQcGl4aQAAAAADCAgIAAAADGF2MUOBAAwAAAAAE2NvbHJuY2x4AAEADQAGgAAAABdpcG1hAAAAAAAAAAEAAQQBAoMEAAAAMm1kYXQSAAoJGAz/2iAhoNCAMhsUx4eGZQIIIJ5QAAAAOtxBfmJLp5yfpwswk+g=";
 const adminUrl = process.env.ADMIN_TEST_URL || "http://127.0.0.1:5173/";
 type Upload = { file: File; alt: string; path: string };
+type EditorSurface = HTMLElement & {
+  editor: {
+    commands: { setTextSelection: (position: number) => boolean };
+    state: {
+      selection: { empty: boolean; from: number };
+      doc: { content: { size: number } };
+    };
+  };
+};
 
 async function setup(
   page: Page,
@@ -150,8 +159,24 @@ test("pastes every supported format in order, maps position while typing, and pu
     return true;
   });
   const surface = page.locator(".document-surface");
-  await surface.press("Control+a");
-  await surface.press("ArrowLeft");
+  await surface.click();
+  // Place the caret explicitly: this test exercises upload mapping, not native
+  // keyboard selectionchange timing in a headless browser.
+  await surface.evaluate((element) =>
+    (element as EditorSurface).editor.commands.setTextSelection(1),
+  );
+  await expect
+    .poll(() =>
+      surface.evaluate((element) => {
+        const { selection } = (element as EditorSurface).editor.state;
+        return {
+          empty: selection.empty,
+          from: selection.from,
+          nativeCollapsed: window.getSelection()?.isCollapsed,
+        };
+      }),
+    )
+    .toEqual({ empty: true, from: 1, nativeCollapsed: true });
   page.on("dialog", (dialog) => dialog.accept("Pasted picture"));
   await paste(page, [
     "image/jpeg",
@@ -165,8 +190,19 @@ test("pastes every supported format in order, maps position while typing, and pu
   await expect(
     page.getByRole("button", { name: "Publish", exact: true }),
   ).toBeDisabled();
-  await surface.press("Control+End");
-  await surface.press("End");
+  await surface.evaluate((element) => {
+    const editor = (element as EditorSurface).editor;
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+  });
+  // Verify the intended caret before typing while the upload is held.
+  await expect
+    .poll(() =>
+      surface.evaluate((element) => {
+        const { selection, doc } = (element as EditorSurface).editor.state;
+        return selection.empty && selection.from === doc.content.size - 1;
+      }),
+    )
+    .toBe(true);
   await page.keyboard.type(" keeps its place");
   release();
   await expect(surface.locator("img")).toHaveCount(5);

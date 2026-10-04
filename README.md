@@ -46,6 +46,14 @@ The Vite server proxies `/api` to `http://127.0.0.1:8787`. `.dev.vars`, `.env`, 
 
 ## Editing and publishing
 
+Recipes has its own public collection at `/recipes/` and its own section in the CMS. Each recipe can be marked Breakfast, Lunch, Dinner, and/or Snack, with optional prep time, cook time, and servings. The editor shares Blog's full Word-style formatting ribbon, rich-text paste, image/GIF uploads, draft saving, preview, and publishing. The first image in the recipe becomes its gallery cover; recipes without images use a text layout. Published recipe addresses stay at `/recipes/<slug>/` when titles change.
+
+Visitors can combine a meal filter with searches across recipe titles, descriptions, and recipe text (including ingredients). Searches ignore case, accents, and punctuation and support shareable `?q=...&meal=...` URLs. Only published recipes enter the static search index. The entire collection remains readable without JavaScript; recipe pages include a print layout.
+
+Before the first authorized release of Recipes, apply `apps/admin/migrations/0002_recipe_drafts.sql` to D1 **before deploying the new Worker**. It expands the permitted draft types while preserving existing drafts, IDs, and timestamps. Test it locally with `pnpm --filter @brendon/admin db:migrate:local`; during an explicitly authorized production release, use `pnpm --filter @brendon/admin db:migrate:remote`, then deploy the admin and release the public site through the usual workflow. No new secret or database is required. This migration is not applied remotely by ordinary frontend builds.
+
+The manual “Deploy private CMS to Cloudflare” workflow applies pending D1 migrations before deploying the Worker and stops on migration failure. It uses the existing Cloudflare Actions secrets. A push to `main` deploys only the public site; it does not start this private CMS workflow.
+
 Visitors can search `/blog/` (and legacy `/notes/`) by title, description, or article text. Results filter as they type, retain newest-first ordering, and can be shared using the `?q=` URL. Clear search restores the complete archive. Search is generated from published posts during each site build and runs in the browser without a backend request; drafts remain private. The archive remains readable without JavaScript.
 
 The CMS sections are Home, Posts, Projects, Résumé, Site, and Settings.

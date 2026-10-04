@@ -9,7 +9,11 @@ const gif = readFileSync(
 
 describe("GIF publishing", () => {
   afterEach(() => vi.unstubAllGlobals());
-  async function upload(bytes: Uint8Array, filename = "animation.gif") {
+  async function upload(
+    bytes: Uint8Array,
+    filename = "animation.gif",
+    kind = "posts",
+  ) {
     const csrf = Buffer.from(
       await crypto.subtle.digest("SHA-256", new TextEncoder().encode("csrf")),
     ).toString("base64");
@@ -61,7 +65,7 @@ describe("GIF publishing", () => {
     );
     form.set("alt", "Red and blue animation");
     const response = await worker.request(
-      "/api/publish/media/posts/gif-test",
+      `/api/publish/media/${kind}/gif-test`,
       {
         method: "POST",
         headers: {
@@ -107,5 +111,20 @@ describe("GIF publishing", () => {
     );
     expect(response.status).toBe(413);
     expect(writes).toHaveLength(0);
+  });
+  it("publishes recipe GIFs without changing their bytes and rejects other collections", async () => {
+    const { response, writes, data } = await upload(
+      gif,
+      "animation.gif",
+      "recipes",
+    );
+    expect(response.status).toBe(200);
+    expect(data.path).toMatch(
+      /^\/uploads\/recipes\/gif-test\/[a-z0-9-]+\.gif$/,
+    );
+    expect(Buffer.from(writes[0]!.payload.content, "base64")).toEqual(gif);
+    const invalid = await upload(gif, "animation.gif", "private");
+    expect(invalid.response.status).toBe(400);
+    expect(invalid.writes).toHaveLength(0);
   });
 });

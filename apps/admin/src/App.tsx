@@ -1,4 +1,11 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { FluentProvider, Spinner } from "@fluentui/react-components";
 import { api, setCsrf, type Session } from "./api";
 import { LoginPage } from "./components/LoginPage";
@@ -39,6 +46,24 @@ const Settings = lazy(() =>
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [page, setPage] = useState("home");
+  const beforeLeave = useRef<(() => Promise<boolean>) | null>(null);
+  const navigating = useRef(false);
+  const registerBeforeLeave = useCallback(
+    (guard: (() => Promise<boolean>) | null) => {
+      beforeLeave.current = guard;
+    },
+    [],
+  );
+  const navigate = async (next: string) => {
+    if (next === page || navigating.current) return;
+    navigating.current = true;
+    try {
+      if (beforeLeave.current && !(await beforeLeave.current())) return;
+      setPage(next);
+    } finally {
+      navigating.current = false;
+    }
+  };
   const [themeId, setThemeId] = useState<AdminThemeId>(readStoredAdminTheme);
   const theme = getAdminTheme(themeId);
   useEffect(() => applyAdminTheme(theme), [theme]);
@@ -51,11 +76,18 @@ export default function App() {
       .catch(() => setSession({ authenticated: false }));
   }, []);
   const logout = async () => {
+    if (navigating.current) return;
+    navigating.current = true;
+    if (beforeLeave.current && !(await beforeLeave.current())) {
+      navigating.current = false;
+      return;
+    }
     try {
       await api("/api/auth/logout", { method: "POST" });
     } finally {
       setCsrf();
       setSession({ authenticated: false });
+      navigating.current = false;
     }
   };
   let content;
@@ -68,7 +100,11 @@ export default function App() {
   else if (!session.authenticated) content = <LoginPage onLogin={setSession} />;
   else
     content = (
-      <AdminShell page={page} setPage={setPage} onLogout={logout}>
+      <AdminShell
+        page={page}
+        setPage={(next) => void navigate(next)}
+        onLogout={logout}
+      >
         <PublishingStatus />
         <Suspense
           fallback={
@@ -78,9 +114,15 @@ export default function App() {
           }
         >
           {page === "home" ? (
-            <Dashboard go={setPage} />
+            <Dashboard go={(next) => void navigate(next)} />
           ) : page === "posts" ? (
-            <PostEditor />
+            <PostEditor key="posts" registerBeforeLeave={registerBeforeLeave} />
+          ) : page === "recipes" ? (
+            <PostEditor
+              key="recipes"
+              kind="recipe"
+              registerBeforeLeave={registerBeforeLeave}
+            />
           ) : page === "projects" ? (
             <ProjectEditor />
           ) : page === "resume" ? (

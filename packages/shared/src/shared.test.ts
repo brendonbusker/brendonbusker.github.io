@@ -7,6 +7,8 @@ import {
   excerptFromMarkdown,
   isAllowedRepositoryPath,
   postSchema,
+  recipeSchema,
+  draftSchema,
   projectPageSchema,
   resumeSchema,
   resumeLinkSchema,
@@ -76,6 +78,50 @@ describe("content schemas", () => {
   it("validates the structured resume model", () => {
     expect(() => resumeSchema.parse({ fullName: "Brendon" })).toThrow();
   });
+  it("validates recipe meal labels and optional cooking details", () => {
+    const recipe = {
+      id: "c17b965a-5d6e-4bf0-a924-8a290b2d48f8",
+      title: "Chickpea toast",
+      slug: "chickpea-toast",
+      publishedAt: "2026-10-04",
+      updatedAt: "2026-10-04",
+      body: "Mash chickpeas and serve on toast.",
+      meals: ["breakfast", "lunch"],
+    };
+    expect(recipeSchema.parse(recipe)).toMatchObject({
+      meals: recipe.meals,
+      servings: "",
+    });
+    expect(
+      recipeSchema.parse({
+        ...recipe,
+        prepMinutes: 0,
+        cookMinutes: 10_080,
+        servings: " 2–3 people ",
+      }),
+    ).toMatchObject({ prepMinutes: 0, servings: "2–3 people" });
+    for (const invalid of [
+      { meals: [] },
+      { meals: ["brunch"] },
+      { meals: ["lunch", "lunch"] },
+      { prepMinutes: -1 },
+      { cookMinutes: 1.5 },
+      { prepMinutes: 10_081 },
+      { servings: "x".repeat(61) },
+    ])
+      expect(recipeSchema.safeParse({ ...recipe, ...invalid }).success).toBe(
+        false,
+      );
+    // Partial recipes can still autosave before they meet publication requirements.
+    expect(
+      draftSchema.parse({
+        id: recipe.id,
+        contentType: "recipe",
+        contentKey: recipe.id,
+        payload: { meals: [] },
+      }).contentType,
+    ).toBe("recipe");
+  });
   it("validates public appearance choices", () => {
     const appearance = appearanceSchema.parse({
       schemaVersion: 1,
@@ -143,6 +189,20 @@ describe("repository paths", () => {
     expect(
       isAllowedRepositoryPath("apps/site/src/content/posts/../config.md"),
     ).toBe(false);
+    for (const path of [
+      "apps/site/src/content/recipes/chickpea-toast.md",
+      "apps/site/public/uploads/recipes/chickpea-toast/animated.gif",
+      "apps/site/public/uploads/recipes/chickpea-toast/image.webp",
+    ])
+      expect(isAllowedRepositoryPath(path)).toBe(true);
+    for (const path of [
+      "apps/site/src/content/recipes/../posts/stolen.md",
+      "apps/site/src/content/recipes/test.html",
+      "apps/site/src/content/recipes/test/other.md",
+      "apps/site/public/uploads/recipes/test/animation.gif.html",
+      "apps/site/public/uploads/recipes/test/image.svg",
+    ])
+      expect(isAllowedRepositoryPath(path)).toBe(false);
   });
 });
 describe("authentication helpers", () => {

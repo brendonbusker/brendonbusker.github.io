@@ -7,10 +7,13 @@ export function useDraft<T>(
   initial: T,
   sourceVersion = "",
   canSave = true,
+  requireDraftLoad = false,
 ) {
   const [value, setValueState] = useState(initial);
   const [state, setState] = useState<SaveState>("idle");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [revision, setRevision] = useState(0);
   const timer = useRef<number | undefined>(undefined);
   const hydrated = useRef(false);
@@ -33,18 +36,30 @@ export function useDraft<T>(
     setValueState(initialRef.current);
     setState("idle");
     setLoading(true);
+    setLoadError("");
+    let loaded = false;
     draftsApi
       .get<T>(contentType, contentKey)
       .then(({ draft }) => {
+        loaded = true;
         if (alive && scope === scopeVersion.current && draft) {
           valueRef.current = draft;
           setValueState(draft);
         }
       })
-      .catch(() => {})
+      .catch((error) => {
+        if (alive && scope === scopeVersion.current)
+          setLoadError(
+            error instanceof Error
+              ? error.message
+              : "Could not load your draft.",
+          );
+      })
       .finally(() => {
         if (alive && scope === scopeVersion.current) {
-          hydrated.current = true;
+          // Strict callers present a retry UI before allowing edits. Legacy
+          // editors retain their existing published-content fallback behavior.
+          hydrated.current = loaded || !requireDraftLoad;
           setLoading(false);
           setRevision((current) => current + 1);
         }
@@ -52,10 +67,20 @@ export function useDraft<T>(
     return () => {
       alive = false;
     };
-  }, [contentType, contentKey, sourceVersion]);
+  }, [contentType, contentKey, sourceVersion, loadAttempt, requireDraftLoad]);
+  const retryLoad = useCallback(
+    () => setLoadAttempt((attempt) => attempt + 1),
+    [],
+  );
   const save = useCallback(
     async (next?: T, force = false) => {
-      if (!canSaveRef.current || (locked.current && !force)) return false;
+      if (
+        (requireDraftLoad && !hydrated.current) ||
+        !canSaveRef.current ||
+        (locked.current && !force)
+      )
+        return false;
+      window.clearTimeout(timer.current);
       const payload = next ?? valueRef.current;
       const scope = scopeVersion.current;
       const version = editVersion.current;
@@ -80,11 +105,11 @@ export function useDraft<T>(
       saveQueue.current = operation;
       return operation;
     },
-    [contentType, contentKey],
+    [contentType, contentKey, requireDraftLoad],
   );
   const setValue = useCallback(
     (next: T | ((current: T) => T)) => {
-      if (locked.current) return;
+      if (locked.current || (requireDraftLoad && !hydrated.current)) return;
       const resolved =
         typeof next === "function"
           ? (next as (v: T) => T)(valueRef.current)
@@ -98,7 +123,7 @@ export function useDraft<T>(
         timer.current = window.setTimeout(() => void save(resolved), 1200);
       }
     },
-    [save],
+    [save, requireDraftLoad],
   );
   const reset = useCallback((next: T) => {
     scopeVersion.current += 1;
@@ -109,6 +134,7 @@ export function useDraft<T>(
     setValueState(next);
     setState("idle");
     setLoading(false);
+    setLoadError("");
     setRevision((current) => current + 1);
   }, []);
   // Drain older autosaves before publishing/deleting a draft. While locked,
@@ -129,7 +155,8 @@ export function useDraft<T>(
       }
     };
     const before = (e: BeforeUnloadEvent) => {
-      if (state === "unsaved" || state === "saving") e.preventDefault();
+      if (state === "unsaved" || state === "saving" || state === "error")
+        e.preventDefault();
     };
     addEventListener("keydown", onKey);
     addEventListener("beforeunload", before);
@@ -146,6 +173,8 @@ export function useDraft<T>(
     save,
     reset,
     loading,
+    loadError,
+    retryLoad,
     revision,
     lockAndSave,
     unlock,

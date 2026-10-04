@@ -1,0 +1,42 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { formatRecipeTime, mealLabels } from '../../lib/recipes';
+import '../../styles/recipes.css';
+
+export async function getStaticPaths() {
+  const recipes = await getCollection('recipes', ({ data }) => data.status === 'published');
+  return recipes.map(recipe => ({ params: { slug: recipe.data.slug }, props: { recipe } }));
+}
+const { recipe } = Astro.props;
+const { data } = recipe;
+const { Content } = await render(recipe);
+const totalMinutes = data.prepMinutes !== undefined && data.cookMinutes !== undefined
+  ? data.prepMinutes + data.cookMinutes : undefined;
+const hasDetails = data.prepMinutes !== undefined || data.cookMinutes !== undefined || data.servings;
+---
+<BaseLayout title={`${data.title} — Recipes — Brendon Busker`} description={data.excerpt || `${data.title}, from Brendon Busker’s recipe collection.`} current="recipes">
+  <article class="recipe-document">
+    <div class="recipe-document-tools"><a href="/recipes/">← All recipes</a><button type="button" data-print-recipe hidden>Print recipe</button></div>
+    <header class="recipe-document-header">
+      <p class="recipe-meals">{data.meals.map((meal, index) => <>{index > 0 && <span aria-hidden="true"> · </span>}<a href={`/recipes/?meal=${meal}`}>{mealLabels[meal]}</a></>)}</p>
+      <h1>{data.title}</h1>
+      {data.excerpt && <p class="recipe-dek">{data.excerpt}</p>}
+      {hasDetails && <dl class="recipe-facts">
+        {data.prepMinutes !== undefined && <div><dt>Prep time</dt><dd>{formatRecipeTime(data.prepMinutes)}</dd></div>}
+        {data.cookMinutes !== undefined && <div><dt>Cook time</dt><dd>{formatRecipeTime(data.cookMinutes)}</dd></div>}
+        {totalMinutes !== undefined && <div><dt>Total time</dt><dd>{formatRecipeTime(totalMinutes)}</dd></div>}
+        {data.servings && <div><dt>Servings</dt><dd>{data.servings}</dd></div>}
+      </dl>}
+    </header>
+    <div class="recipe-body prose"><Content /></div>
+  </article>
+</BaseLayout>
+
+<script>
+  const print = document.querySelector<HTMLButtonElement>('[data-print-recipe]');
+  if (print) {
+    print.hidden = false;
+    print.addEventListener('click', () => window.print());
+  }
+</script>
