@@ -1,8 +1,12 @@
 # Personal Homepage / Private CMS — Agent Handoff
 
-Last updated: September 7, 2026  
-Repository: `brendonbusker/brendonbusker.github.io`  
-Primary branch: `main`
+Last updated: October 4, 2026 (Linux migration audit)
+
+Repository: `brendonbusker/brendonbusker.github.io`
+
+Production branch: `main`
+
+Development handoff branch: `linux-migration` (do not deploy during migration)
 
 ## Read this first
 
@@ -13,7 +17,7 @@ At the beginning of every development task:
 1. Run `git status -sb` and `git fetch origin`.
 2. Compare local `main` with `origin/main` before editing.
 3. Preserve all remote CMS commits. The production admin writes published content directly to `main`, so the user may have published content since the last agent turn.
-4. If local work must be integrated after new CMS commits, commit the scoped local work and use a non-destructive rebase onto `origin/main`. Never reset away user content.
+4. Fetch again before committing. Integrate new CMS commits without discarding content. On the shared `linux-migration` branch, merge `origin/main`; only rebase unpublished development commits. Never force-push or rewrite CMS history.
 5. Read the relevant implementation before proposing a replacement. This is a working production system, not a greenfield scaffold.
 
 ## Product state
@@ -207,7 +211,7 @@ After deployment:
 - Do not replace current content with seed data or text remembered from an older screenshot.
 - On September 10, 2026, the user explicitly overrode the earlier outdated-source note: match `resume.pdf` in both content and layout. Résumé fields were synchronized to that reference (including phone, skills and project bullets). Preserve all subsequent CMS edits; do not reimport the reference automatically. The web résumé and PDF remain independently published.
 - Before committing, fetch again. The user may publish from the CMS while an agent is working.
-- If remote `main` advanced, preserve those commits and rebase scoped code work safely.
+- If remote `main` advanced, preserve those commits. Merge into an already-pushed development branch; rebase only unpublished scoped work.
 - Never use `git reset --hard`, discard unrelated modifications, or rewrite public history.
 
 ## Design guardrails
@@ -236,8 +240,177 @@ These are not necessarily current bugs; confirm priority with the user before im
 - Add tags if the growing blog archive needs topic filters; text search is now implemented.
 - Consider TOTP later; current password + Turnstile + layered throttling is the configured launch security model.
 
-## Suggested first prompt for the new Astra task
+## Linux migration snapshot — October 4, 2026
+
+The Windows checkout was clean before this documentation update. A fresh `git fetch origin` found local `main` and `origin/main` at `e6ef08a09aaf7cb7c3124ab7d2cf9c1ca0bb770f` (September 25 project-publishing fix), with no newer CMS commits at audit time. There were no other local branches, unpushed commits, stashes, nonignored untracked files, or additional worktrees. All application changes from the conversation are already in that history; there is no unfinished local implementation to rescue. The migration commit updates this handoff only.
+
+Read-only production checks on October 4 returned HTTP 200 for both services. The public `/deployment.json` reported exactly `e6ef08a09aaf7cb7c3124ab7d2cf9c1ca0bb770f`; the admin HTML referenced `/assets/index-Dte-sc-n.js`. These checks confirm the served version and availability, not a fresh authenticated publishing smoke test. No production writes, secret changes, database migrations, or deployments are part of this migration.
+
+The project-upload problem was fixed in `e6ef08a`: prior CMS commits had uploaded Windows Macro Studio successfully but left `published: false`. Publish now explicitly makes projects visible, while Hide is a separate confirmed action. Do not undo the CMS commits or recreate that project from a seed.
+
+Migration validation on Windows: `pnpm lint` passed; `pnpm test` passed all 61 tests across 13 files; `pnpm exec playwright test --list` discovered 38 browser tests across 13 files. The Windows sandbox initially blocked the test runner's filesystem access; rerunning outside that sandbox passed. Browser tests were enumerated, not executed, and a full build/typecheck/browser run was not repeated for this documentation-only change. Run the complete validation sequence below on Linux before feature work.
+
+Other preserved milestones include dashboard freshness (`ec4a590`), clipboard image uploads (`d609a47`), and résumé editing/publishing hardening (`f9a9e8f`). Search, timestamps, GIF support, editable blog introduction, ESLint, PDF generation and the reported résumé form fixes are implemented, not pending feature requests.
+
+### Preserve work without deploying
+
+`linux-migration` starts from the freshly fetched production history and holds this handoff. Push this branch, not `main`. The Pages workflow's automatic trigger is limited to selected paths on `main`; the admin workflow is manual-only. Do not dispatch either workflow or run the admin `deploy` script during migration. Manual workflow dispatch can deploy even when an automatic branch trigger would not apply.
+
+On Linux, preserve new CMS publications with this sequence before editing and again before committing (resolve any conflicts deliberately, keeping current published content):
+
+```bash
+git status -sb
+git fetch origin
+git merge --ff-only origin/linux-migration
+git merge origin/main
+# Make and validate scoped changes; fetch/merge again before committing.
+git add <explicit-files>
+git commit -m "Describe the change"
+git push origin linux-migration
+```
+
+Run merges with a clean worktree; if local and remote development branches diverge, inspect their commits and merge rather than reset. A later release can merge reviewed development work into current `main`, then deploy only the affected service. Moving machines does not authorize such a release.
+
+## Known limitations and unfinished work
+
+No application implementation is left uncommitted. The following are follow-up areas from source inspection, not changes made in the migration:
+
+1. **Prioritize project load-failure handling.** `ProjectEditor.tsx` initially uses seed projects, reports a failed published-project fetch, then clears `syncing`. Unlike the résumé editor, it does not retain a successful-load requirement before publishing. Replace that fallback with a read-only error/retry state so a failed read cannot encourage publishing stale data. The separate project introduction editor already requires its loaded source SHA.
+2. **Prioritize project draft recovery and navigation.** The project selector is based on repository projects, not a full D1 draft listing. New unpublished drafts lack a discoverable library after leaving the editor. Audit switching projects with a pending autosave; the shared hook cancels pending timers when its scope changes. Add focused reproduction tests before changing behavior.
+3. **Clarify project Delete.** Its current action deletes the D1 draft, not the published Markdown file. Use Hide from website to remove public visibility. Improve the label/confirmation instead of implying published deletion.
+4. **Check project previews and renaming.** The preview uses stored screenshot paths directly; `/uploads/...` resolves against the admin origin rather than the public site. Verify/fix this in the editor. Changing the title also regenerates the slug; assess preservation of existing project deep links before allowing renames to alter URLs.
+5. **Audit remaining editor publication races.** Résumé and project publishing use the shared autosave lock/drain mechanism. Blog image uploads block publication, but the blog publish flow deserves the same edit/save concurrency review. This is a review target, not a reproduced new data-loss incident.
+6. **Linux bootstrap still needs to be exercised on Linux.** The password setup script's interactive mode is portable, but its `--generate` clipboard mode explicitly supports Windows only. Do not run credential setup as a migration step; it changes production secrets. Native dependencies and browser packages must be reinstalled on Linux.
+
+Uploads are separate immediate GitHub commits: an image uploaded while composing an unpublished draft can already become public. Private D1 drafts do not make uploaded media private. Original animated GIFs remain animated; a clipboard that supplies only a flattened PNG cannot preserve the missing frames.
+
+Future product options, after editing reliability and Linux validation: per-post/project social preview images; a CMS-controlled default Open Graph image; PDF history/restoration; topic tags when useful; optional TOTP. These are suggestions, not approved work. Preserve the original résumé layout rather than adding a professional summary or invented achievements. Web résumé Publish and Publish PDF are independent actions.
+
+## Linux setup and validation
+
+Use Git, Node.js **24.x** (Windows audit runtime: 24.13.0), and **pnpm 11.19.0**, pinned in `package.json`. Install Node through your preferred Linux version manager, then install the pinned pnpm. Current Astro requires Node >=22.12; Wrangler requires Node >=22. The deployment workflows currently select Node 22. Do not upgrade dependencies merely to migrate operating systems.
+
+```bash
+npm install --global pnpm@11.19.0
+git clone --branch linux-migration https://github.com/brendonbusker/brendonbusker.github.io.git
+cd brendonbusker.github.io
+git fetch origin
+git merge origin/main
+pnpm install --frozen-lockfile
+pnpm exec playwright install --with-deps chromium
+```
+
+Playwright's OS dependency installation may require sudo on supported Debian/Ubuntu distributions. Use the distribution's equivalent dependencies elsewhere. Reinstall packages rather than copying Windows `node_modules`, pnpm stores, Chromium, or compiled Worker binaries. Linux's case-sensitive paths should be checked by the fresh build and tests.
+
+Run the full baseline once on the new machine:
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm test:e2e
+```
+
+Playwright starts the public site and admin UI itself and uses mocked CMS APIs; these tests do not require production login credentials. Use `pnpm test:e2e --workers=2` if resources are limited. For interactive frontend work, use separate terminals:
+
+```bash
+pnpm --filter @brendon/site dev:foreground --host 127.0.0.1
+pnpm --filter @brendon/admin dev
+```
+
+The explicit foreground script prevents Astro's background-server behavior from confusing terminal/test lifecycle. URLs remain 4321 (site), 5173 (admin UI), and 8787 (optional local Worker). Preview routes, mobile layouts, project dialogs, blog search, all theme policies, résumé inputs/newlines and PDF generation. Mock publishing for browser tests; do not create public test posts merely to validate the migration.
+
+For optional real local Worker integration:
+
+```bash
+cp apps/admin/.dev.vars.example apps/admin/.dev.vars
+# Configure isolated local credentials/settings privately before proceeding.
+pnpm --filter @brendon/admin build
+pnpm --filter @brendon/admin db:migrate:local
+pnpm --filter @brendon/admin worker:dev
+```
+
+The tracked Wrangler config points to the production repository and `main`. A local D1 database does **not** prevent the local Worker from making real GitHub publishing requests. Use an isolated test repository/token with local overrides for `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_BRANCH`, `PUBLIC_SITE_URL`, the local `ADMIN_ORIGIN`, and test Turnstile configuration. Keep values only in ignored local configuration. Never use a production publishing token just to enable a mock-based test suite. Do not run `db:migrate:remote`, `setup:admin-password`, `setup:session-secret`, or `deploy` during bootstrap.
+
+Authenticate Linux GitHub access afresh with your chosen HTTPS credential manager or SSH setup. Windows currently uses Git Credential Manager with an HTTPS remote. For future authorized Cloudflare operations, run `pnpm --filter @brendon/admin exec wrangler login` on Linux. Existing Cloudflare resources and production secrets stay in place; do not recreate the D1 database, Turnstile widget, or Worker.
+
+For PDF-specific template work, the tracked `scripts/verify-resume-pdf.py` uses Python and `pdfplumber`; a Linux virtual environment and Poppler (`pdftoppm`) are useful for extraction/render comparisons. Root `resume.pdf` is the approved original visual reference and is already tracked. Compare its text only when intentionally generating that reference content; subsequent live CMS résumé edits are authoritative and may differ.
+
+## Local-only files and private state transfer inventory
+
+**Required separate project-file transfers: none found.** At audit time there is no actual project `.dev.vars`, `.env`, local D1 database, SQL backup, private key, or private npm configuration to migrate. Only the tracked `apps/admin/.dev.vars.example`, `apps/site/.env.example`, and D1 migration SQL were found. `apps/admin/.wrangler/` contains no local database files. Git includes source, tests, schemas, migrations, lockfile, all current published content/media, root `resume.pdf`, and the downloadable public PDF.
+
+This inventory covers the project plus conventional Wrangler/Git/SSH locations; it is not a search of every unrelated disk folder or every possible password-manager store. Keep access to your GitHub account, Cloudflare account and CMS username/password through your password manager. Secret values were neither retrieved nor added to this handoff.
+
+| Location/state | Transfer decision |
+| --- | --- |
+| Cloudflare Worker production secrets named above | Already remote. Keep them there; no file transfer or rotation needed. Cloudflare does not return their values. |
+| Remote D1 `personal-site-cms` | Drafts, sessions, security events and admin preferences remain hosted. No local copy was found and no export was made. An optional private draft/preferences backup should be exported securely before decommissioning accounts, not committed. Moving the development machine does not require restoring D1. |
+| GitHub Actions deployment secrets, if configured | Remain in GitHub; no Linux file transfer. Their presence/values were not queried during this audit. |
+| `C:\Users\brend\AppData\Roaming\xdg.config\.wrangler\config\default.enc` | Existing encrypted, machine-specific Wrangler authentication. Do not commit or copy as Linux configuration; log in again. Wrangler logs, metrics, preferences, cache and native keyring packages beside it are also unnecessary. |
+| Windows Git Credential Manager store | Machine-managed authentication, not a repository file. Authenticate again on Linux; do not export tokens into source. |
+| `C:\Users\brend\.ssh\config` | Optional for unrelated SSH workflows; inspect privately and adapt Windows paths if transferring. This repository uses HTTPS. |
+| `C:\Users\brend\.ssh\homeserver_ed25519` | Private key for a separate SSH identity; not required for this website. If retaining that access, transfer securely outside Git and set Linux permissions to 600. Contents were not read. |
+| `C:\Users\brend\.ssh\homeserver_ed25519.pub` | Matching public key, optional with the above identity. |
+| `C:\Users\brend\.ssh\known_hosts` and `known_hosts.old` | Optional SSH host-trust history; not required for this repository. |
+| Browser state | Sign in to the CMS again. Themes (`brendon-publishing-theme`, `brendon-public-theme`) and last-publication banner (`cms-latest-publication`) are browser-local and can be reset. Do not migrate session cookies into the repository. |
+
+### Optional QA evidence worth copying separately
+
+All paths below are relative to the Windows checkout `C:\Users\brend\Documents\Codex\Personal-Homepage`. They are ignored, historical evidence, not required runtime data. Copy these privately if you want to retain earlier investigations; résumé PDFs/screenshots can contain personal contact information. Some scripts assume Windows paths or test behavior from before later fixes; the tracked tests are the current regression suite. No ignored file is included in the migration commit.
 
 ```text
-Continue development of my production personal website and private CMS in this repository. First read PROJECT_HANDOFF.md, then use kickoff.txt as the original product specification and README.md for setup details. Inspect the current repository and production state before making changes. Always fetch origin/main before editing and again before committing because the production CMS writes my published content directly to main; preserve every CMS commit and never replace current content with seed data. The public site is live on GitHub Pages and the private admin/API are live on Cloudflare. Work autonomously, implement requested changes end to end, run proportional type/build/unit/browser checks, deploy the affected service when appropriate, and verify the live result. Ask only when a missing choice would materially change the product.
+tmp/dashboard-current.json
+tmp/generate-long-resume.ts
+tmp/generate-resume.ts
+tmp/resume-smoke-report.json
+tmp/resume-smoke.cjs
+tmp/verify-dashboard-data.ts
+tmp/verify-dashboard-ui.cjs
+tmp/verify-live-resume.cjs
+tmp/verify-project-live.cjs
+tmp/verify-resume-checkbox.cjs
+tmp/verify-resume-layout.cjs
+tmp/lighthouse/home.json
+tmp/pdfs/full-chrome-preview.png
+tmp/pdfs/generated-resume.pdf
+tmp/pdfs/live-cms-pdf-preview.png
+tmp/pdfs/live-generated-resume.pdf
+tmp/pdfs/live-matched-preview.png
+tmp/pdfs/live-matched.pdf
+tmp/pdfs/long.pdf
+tmp/pdfs/matched-1.png
+tmp/pdfs/matched.pdf
+tmp/pdfs/reference-1.png
+tmp/pdfs/resume-1.png
+tmp/pdfs/resume-2.png
+tmp/pdfs/smoke-generated.pdf
+tmp/pdfs/smoke-live-1.png
+tmp/pdfs/smoke-live.pdf
+tmp/visual/admin.png
+tmp/visual/dashboard-live-1365.png
+tmp/visual/dashboard-live-390.png
+tmp/visual/home.png
+tmp/visual/resume-checkbox-after-1280.png
+tmp/visual/resume-checkbox-after-390.png
+tmp/visual/resume-checkbox-before-1280.png
+tmp/visual/resume-checkbox-live-1280.png
+tmp/visual/resume-checkbox-live-390.png
+tmp/visual/resume-preview-after-1280.png
+tmp/visual/resume-preview-after-390.png
+tmp/visual/resume-preview-live-1280.png
+tmp/visual/resume-preview-live-390.png
+tmp/visual/resume.png
+tmp/visual/smoke-public-resume-1280.png
+tmp/visual/smoke-public-resume-390.png
+tmp/visual/windows-macro-studio-live.png
+```
+
+Skip these rebuildable ignored directories: root `node_modules/`, `apps/admin/node_modules/`, `apps/site/node_modules/`, `packages/shared/node_modules/`, `apps/admin/dist/`, `apps/site/dist/`, `apps/site/.astro/`, `test-results/`, and empty `apps/admin/.wrangler/`. Also skip the obsolete `tmp/worker-dry-run/index.js`, `tmp/worker-dry-run/index.js.map`, and `tmp/worker-dry-run/README.md`. Rebuild them if needed; do not treat generated bundles as missing source.
+
+## Starter prompt for the Linux session
+
+```text
+Continue this website on linux-migration. Read PROJECT_HANDOFF.md, kickoff.txt and README.md. Fetch origin, preserve newer CMS commits from main, install the pinned dependencies, and run the Linux validation steps. Keep current content and secrets safe. Stay on the development branch and do not deploy until I request a release. Report any migration blockers, then wait for my next feature request.
 ```
