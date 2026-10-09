@@ -1,6 +1,6 @@
 # Personal Homepage / Private CMS — Agent Handoff
 
-Last updated: October 4, 2026 (Linux setup and Recipes implementation)
+Last updated: October 9, 2026 (explicit recipe cover photos)
 
 Repository: `brendonbusker/brendonbusker.github.io`
 
@@ -10,7 +10,7 @@ Development handoff branch: `linux-migration` (do not deploy during migration)
 
 ## Recipes development — October 4, 2026
 
-Recipes was released from `c95340d1d0632cb11d576dd2d0dcf3b4b64af2e4` to `main` on October 4 with user approval. GitHub Pages deployment succeeded and its live `/deployment.json` matched that commit. The production recipe migration and private CMS deployment also succeeded; Worker version is `19f72985-c264-4e5f-b8d3-33b90cebd369`. The public `/recipes/` gallery supports multiple Breakfast/Lunch/Dinner/Snack labels, optional prep/cook minutes and servings, alphabetical browsing, combined full-text search and meal filters, shareable filter URLs, and a no-JavaScript fallback. Individual `/recipes/<slug>/` pages render rich recipe content and have a print layout. The first image supplies the gallery cover; recipes without images remain supported. No sample recipes are published or committed as user content.
+Recipes was released from `c95340d1d0632cb11d576dd2d0dcf3b4b64af2e4` to `main` on October 4 with user approval. GitHub Pages deployment succeeded and its live `/deployment.json` matched that commit. The production recipe migration and private CMS deployment also succeeded; Worker version is `19f72985-c264-4e5f-b8d3-33b90cebd369`. The public `/recipes/` gallery supports multiple Breakfast/Lunch/Dinner/Snack labels, optional prep/cook minutes and servings, alphabetical browsing, combined full-text search and meal filters, shareable filter URLs, and a no-JavaScript fallback. Individual `/recipes/<slug>/` pages render rich recipe content and have a print layout. The initial release used the first body image as the gallery cover; explicit covers replace that behavior in the October 9 change below. No sample recipes are published or committed as user content.
 
 Admin → Recipes reuses the complete Blog editor with recipe-specific metadata. Photos, original animated GIFs, clipboard image/text paste, rich formatting, previews, drafts, publishing, reopening, and confirmed deletion use the existing protected API model. Draft saves are drained before publishing or changing documents/sections; failed saves retain edits. Published recipe slugs stay fixed when titles change. `recipeSchema`, repository path allowlists, and Worker serialization cover the new content and media paths. Public recipe content remains static and independent of Cloudflare.
 
@@ -33,6 +33,18 @@ The correction keeps the current editor mounted while showing an in-place sign-i
 SQLite-backed Worker tests reproduce recipe saving, updating and reopening with the real migrations, and distinguish schema errors, CSRF rejection and expired sessions. Production validation must continue to avoid creating test recipes or reading private draft content or credentials.
 
 The same recovery handles an expired CSRF token (including opening another admin tab); other 403 responses retain their original errors. Invalid login responses keep the editor open, pending sign-in cannot be dismissed, and late failures from an old session cannot invalidate the new login. Draft writes remain serialized, without automatic mutation retries. Verification passed: 86 unit tests, the 51 existing browser cases (with focused reruns after updating the expired-session expectation and ending development hot reloads), two new browser recovery cases, lint, TypeScript checks and the admin production build. The new browser cases verify failed/cancelled sign-in, preserved recipe fields and selected document, no draft rehydration or automatic publication, renewed CSRF on explicit save/publish, malformed login responses, and pending-dialog dismissal protection. Desktop/mobile recovery screenshots were inspected.
+
+That save-recovery correction was released as `c0476d4db6720a98dc1193f1bdebca3893699c5d` on October 4, with Worker version `9cd36161-84d4-4423-a29d-89ba62163f78`. The live HTML, entry/editor/save-status JavaScript and CSS matched the local build, and recipe APIs continued to require authentication.
+
+### Recipe cover photos — October 9, 2026
+
+The recipe editor has a separate Cover photo control for uploading a finished-dish photo or deliberately selecting an existing recipe image. The selected cover has a gallery-shaped preview, editable alternative text, replacement and removal controls. It is independent of the Word-style document body. Only the explicit cover appears on the public gallery card; recipes without a cover use the text layout even when their instructions contain images. Recipe detail pages and search still use the original body. Existing recipe files are not automatically assigned a cover or rewritten.
+
+The optional `coverImage: { src, alt }` field flows through the shared schema, D1's existing JSON payload, and a single-line JSON object in Markdown frontmatter. Older recipe files remain valid. No database migration, dependency change, or new secret is needed. Cover uploads reuse the protected recipe media route, image optimization/GIF preservation, serialized upload queue, publication/navigation guards and temporary local previews; only permanent `/uploads/...` paths are stored. The chooser normalizes public-site image URLs to those paths and excludes external images, preserving the existing admin CSP. Removing a cover removes its metadata on publication, not the uploaded media or any inline image.
+
+This work started from `3dc9e90`, including the user's October 9 recipe publications and uploaded photos. Preserve those CMS commits and fetch `origin/main` again before release. Production testing must not create sample recipes or choose a cover on the user's behalf.
+
+Validation passed: all 91 unit tests, all 56 browser tests (`--workers=2`), lint, workspace typechecks and site/admin production builds. New checks cover separate cover uploads with no inline images, draft/publish/reopen/removal, unchanged recipe body, GIF preservation, cancelled/failed replacements, delayed upload selection/removal races, navigation locks, safe metadata round-trips and explicit-only public covers. Desktop/mobile controls and gallery screenshots were inspected. The normal site build contains 18 pages and both real recipes; existing published recipe files and photos remain unchanged. The user approved release to `main` and the private CMS on October 9; deployment verification will be recorded after both services finish.
 
 ## Read this first
 

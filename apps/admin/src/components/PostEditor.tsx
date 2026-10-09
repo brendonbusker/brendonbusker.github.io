@@ -69,6 +69,7 @@ import {
   excerptFromMarkdown,
   postSchema,
   recipeSchema,
+  recipeCoverImageSchema,
   recipeMeals,
   slugify,
   publishingTimezone,
@@ -247,6 +248,10 @@ export function PostEditor({
   const publicationInputScope = useRef("");
   const [dateError, setDateError] = useState("");
   const imageRef = useRef<HTMLInputElement>(null);
+  const coverRef = useRef<HTMLInputElement>(null);
+  const coverChoiceVersion = useRef(0);
+  const coverUploadPending = useRef(false);
+  const [coverUploading, setCoverUploading] = useState(false);
   const [imageUploads, setImageUploads] = useState(0);
   const uploadQueue = useRef(Promise.resolve());
   const pendingUploads = useRef(0);
@@ -298,6 +303,26 @@ export function PostEditor({
     deleting ||
     switching;
   const recipe = post as Recipe;
+  const coverChoices = useMemo(() => {
+    if (!isRecipe) return [];
+    const html = /^\s*</.test(post.body)
+      ? post.body
+      : (marked.parse(post.body) as string);
+    const document = new DOMParser().parseFromString(
+      DOMPurify.sanitize(html),
+      "text/html",
+    );
+    const seen = new Set<string>();
+    return [...document.querySelectorAll("img")].flatMap((image) => {
+      let src = image.getAttribute("src") || "";
+      if (src.startsWith(`${PUBLIC_SITE_URL}/`)) src = new URL(src).pathname;
+      const alt = (image.getAttribute("alt")?.trim() || "").slice(0, 240);
+      const choice = recipeCoverImageSchema.safeParse({ src, alt });
+      if (seen.has(src) || !choice.success) return [];
+      seen.add(src);
+      return [choice.data];
+    });
+  }, [isRecipe, post.body]);
   const publishedSource = publishedPosts.find(
     ({ content }) => content.id === selected,
   );
@@ -945,6 +970,97 @@ export function PostEditor({
       }
     });
   }
+  function chooseCover(coverImage: Recipe["coverImage"]) {
+    if (mutationBlocked || operationLock.current) return;
+    coverChoiceVersion.current += 1;
+    setField("coverImage", coverImage);
+    setMessage(coverImage ? "Cover photo selected." : "Cover photo removed.");
+  }
+  function uploadCover(file?: File) {
+    if (
+      !file ||
+      !isRecipe ||
+      !editor ||
+      editor.isDestroyed ||
+      mutationBlocked ||
+      operationLock.current ||
+      coverUploadPending.current
+    )
+      return;
+    const slug = post.slug || slugify(post.title);
+    if (!slug) {
+      setMessage("Add a recipe title before uploading a cover photo.");
+      return;
+    }
+    const alt = prompt(
+      "Describe this cover photo for visitors using a screen reader.",
+    )?.trim();
+    if (!alt) return;
+    if (alt.length > 240) {
+      setMessage(
+        "Cover photo description must be 240 characters or fewer. Select the photo again to retry.",
+      );
+      return;
+    }
+    const targetEditor = editor;
+    const targetRevision = loadedRevision.current;
+    const targetScope = uploadScopeVersion.current;
+    const targetChoice = ++coverChoiceVersion.current;
+    const targetId = post.id;
+    const isCurrent = () =>
+      !targetEditor.isDestroyed &&
+      loadedRevision.current === targetRevision &&
+      uploadScopeVersion.current === targetScope &&
+      coverChoiceVersion.current === targetChoice &&
+      !operationLock.current;
+    pendingUploads.current += 1;
+    coverUploadPending.current = true;
+    setImageUploads(pendingUploads.current);
+    setCoverUploading(true);
+    setMessage("");
+    uploadQueue.current = uploadQueue.current.then(async () => {
+      try {
+        if (!isCurrent()) return;
+        const optimized = await optimizeImage(file);
+        if (!isCurrent()) return;
+        const form = new FormData();
+        form.append("file", optimized);
+        form.append("alt", alt);
+        const result = await api<{ path: string; alt: string }>(
+          `/api/publish/media/${collection}/${slug}`,
+          { method: "POST", body: form },
+        );
+        if (!isCurrent()) return;
+        const coverImage = recipeCoverImageSchema.parse({
+          src: result.path,
+          alt: result.alt,
+        });
+        const previewUrl = URL.createObjectURL(optimized);
+        objectUrls.current.push(previewUrl);
+        uploadedPreviews.current.set(result.path, previewUrl);
+        setValue((current) =>
+          current.id === targetId
+            ? { ...current, coverImage, updatedAt: new Date().toISOString() }
+            : current,
+        );
+        setMessage(
+          "Cover photo uploaded. It will appear on the recipe card after publishing.",
+        );
+      } catch (error) {
+        if (isCurrent())
+          setMessage(
+            `Cover photo upload failed. ${error instanceof Error ? error.message : "Please try again."} Your previous cover selection has been kept.`,
+          );
+      } finally {
+        pendingUploads.current -= 1;
+        coverUploadPending.current = false;
+        if (!targetEditor.isDestroyed) {
+          setImageUploads(pendingUploads.current);
+          setCoverUploading(false);
+        }
+      }
+    });
+  }
   const selectedImageLayout = editor?.isActive("image")
     ? imageLayout(editor.getAttributes("image").layout)
     : "block";
@@ -978,6 +1094,19 @@ export function PostEditor({
           event.target.value = "";
         }}
       />
+      {isRecipe && (
+        <input
+          ref={coverRef}
+          hidden
+          type="file"
+          accept={IMAGE_TYPES.join(",")}
+          aria-label="Upload recipe cover photo"
+          onChange={(event) => {
+            uploadCover(event.target.files?.[0]);
+            event.target.value = "";
+          }}
+        />
+      )}
       <aside className="document-list">
         <header>
           <h2>{sectionLabel}</h2>
@@ -1318,6 +1447,90 @@ export function PostEditor({
             </>
           )}
         </fieldset>
+        {isRecipe && (
+          <fieldset className="recipe-cover" disabled={mutationBlocked}>
+            <legend>Cover photo</legend>
+            <p>
+              Choose the photo shown on this recipe’s card. Leave it empty for a
+              card without a photo.
+            </p>
+            <div className="recipe-cover-content">
+              {recipe.coverImage && (
+                <img
+                  className="recipe-cover-preview"
+                  src={
+                    uploadedPreviews.current.get(recipe.coverImage.src) ||
+                    publicAssetUrl(recipe.coverImage.src)
+                  }
+                  alt={recipe.coverImage.alt}
+                />
+              )}
+              <div className="recipe-cover-controls">
+                <div className="recipe-cover-actions">
+                  <Button
+                    icon={<Image20Regular />}
+                    disabled={coverUploading}
+                    onClick={() => coverRef.current?.click()}
+                  >
+                    {coverUploading
+                      ? "Uploading cover…"
+                      : recipe.coverImage
+                        ? "Change cover photo"
+                        : "Upload cover photo"}
+                  </Button>
+                  {(recipe.coverImage || coverUploading) && (
+                    <Button onClick={() => chooseCover(undefined)}>
+                      Remove cover
+                    </Button>
+                  )}
+                </div>
+                {recipe.coverImage && (
+                  <Field
+                    label="Cover photo description"
+                    hint="Describe the photo for visitors using a screen reader."
+                  >
+                    <Input
+                      value={recipe.coverImage.alt}
+                      maxLength={240}
+                      disabled={coverUploading}
+                      onChange={(_, data) =>
+                        setField("coverImage", {
+                          ...recipe.coverImage!,
+                          alt: data.value,
+                        })
+                      }
+                    />
+                  </Field>
+                )}
+              </div>
+            </div>
+            {coverChoices.length > 0 && (
+              <details className="recipe-cover-chooser">
+                <summary>Use an uploaded image from this recipe</summary>
+                <div className="recipe-cover-options">
+                  {coverChoices.map((image, index) => (
+                    <button
+                      key={image.src}
+                      type="button"
+                      aria-label={`Use recipe image ${index + 1} as cover${image.alt ? `: ${image.alt}` : ""}`}
+                      aria-pressed={recipe.coverImage?.src === image.src}
+                      onClick={() => chooseCover(image)}
+                    >
+                      <img
+                        src={
+                          uploadedPreviews.current.get(image.src) ||
+                          publicAssetUrl(image.src)
+                        }
+                        alt=""
+                      />
+                      <span>{image.alt || `Recipe image ${index + 1}`}</span>
+                    </button>
+                  ))}
+                </div>
+              </details>
+            )}
+          </fieldset>
+        )}
         {imageUploads > 0 && (
           <div className="publish-message" role="status">
             Uploading {imageUploads} image{imageUploads === 1 ? "" : "s"} to

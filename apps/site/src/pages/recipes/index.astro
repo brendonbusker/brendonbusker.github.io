@@ -34,8 +34,9 @@ const entries = await Promise.all(recipes.map(async recipe => ({
       <p class="recipe-result-count" data-recipe-status role="status" aria-live="polite" aria-atomic="true"></p>
     </form>
     <div id="recipe-results" class="recipe-grid">
-      {entries.map(({ recipe, cover, searchHtml }) => {
+      {entries.map(({ recipe, searchHtml }) => {
         const { data } = recipe;
+        const cover = data.coverImage;
         const totalMinutes = data.prepMinutes !== undefined && data.cookMinutes !== undefined
           ? data.prepMinutes + data.cookMinutes : undefined;
         return <article class:list={['recipe-entry', { 'recipe-entry-text': !cover }]} data-meals={data.meals.join(' ')}>

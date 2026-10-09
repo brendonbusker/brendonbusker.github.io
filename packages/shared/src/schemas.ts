@@ -86,6 +86,45 @@ export const postSchema = z.object({
 });
 
 export const recipeMeals = ["breakfast", "lunch", "dinner", "snack"] as const;
+export const recipeCoverImageSchema = z.object({
+  src: z
+    .string()
+    .min(1)
+    .max(2048)
+    .refine((value) => {
+      if (value !== value.trim() || !value.startsWith("/uploads/"))
+        return false;
+      try {
+        // Inspect encoded characters before URL parsing can normalize dot segments
+        // or backslashes. Repeated decoding also rejects double-encoded traversal.
+        let decoded = value;
+        while (true) {
+          if (
+            [...decoded].some((character) => {
+              const code = character.charCodeAt(0);
+              return code < 32 || (code >= 127 && code <= 159);
+            }) ||
+            decoded.includes("\\") ||
+            /(?:^|\/)\.{1,2}(?:\/|[?#]|$)/.test(decoded)
+          )
+            return false;
+          // Keep literal percent signs valid while inspecting every layer of
+          // percent encoding (for example %252e%252e or %250a).
+          const next = decodeURIComponent(
+            decoded.replace(/%(?![\da-f]{2})/gi, "%25"),
+          );
+          if (next === decoded) break;
+          decoded = next;
+        }
+        return new URL(value, "https://uploads.invalid").pathname.startsWith(
+          "/uploads/",
+        );
+      } catch {
+        return false;
+      }
+    }, "Choose an uploaded image from this website"),
+  alt: z.string().max(240).default(""),
+});
 export const recipeSchema = postSchema.extend({
   meals: z
     .array(z.enum(recipeMeals))
@@ -98,6 +137,7 @@ export const recipeSchema = postSchema.extend({
   prepMinutes: z.number().int().min(0).max(10_080).optional(),
   cookMinutes: z.number().int().min(0).max(10_080).optional(),
   servings: z.string().trim().max(60).optional().default(""),
+  coverImage: recipeCoverImageSchema.optional(),
 });
 
 export const projectSchema = z.object({

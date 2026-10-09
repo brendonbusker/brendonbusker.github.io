@@ -1696,6 +1696,97 @@ fieldset.metadata-strip {
   margin: 3px 0 0;
   font-weight: 600;
 }
+.recipe-cover {
+  min-width: 0;
+  margin: 20px 24px;
+  padding: 16px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+}
+.recipe-cover legend {
+  padding: 0 6px;
+  font-weight: 600;
+}
+.recipe-cover > p {
+  margin: 0 0 14px;
+  color: var(--admin-muted);
+}
+.recipe-cover-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+.recipe-cover-preview {
+  display: block;
+  width: 180px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.recipe-cover-controls {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  max-width: 560px;
+  flex: 1;
+}
+.recipe-cover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.recipe-cover-chooser {
+  margin-top: 16px;
+}
+.recipe-cover-chooser summary {
+  cursor: pointer;
+}
+.recipe-cover-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.recipe-cover-options button {
+  min-width: 0;
+  padding: 6px;
+  text-align: left;
+  color: var(--admin-text);
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.recipe-cover-options button[aria-pressed="true"] {
+  outline: 2px solid var(--admin-accent);
+}
+.recipe-cover-options img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  margin-bottom: 6px;
+}
+.recipe-cover-options span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+@media (max-width: 620px) {
+  .recipe-cover {
+    margin: 16px;
+  }
+  .recipe-cover-content {
+    flex-direction: column;
+  }
+  .recipe-cover-controls {
+    width: 100%;
+  }
+}
 @media (max-width: 900px) {
   .recipe-workspace {
     height: auto;

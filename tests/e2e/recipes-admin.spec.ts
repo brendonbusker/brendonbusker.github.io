@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import type { Recipe } from "@brendon/shared";
 import type { PublishedItem } from "../../apps/admin/src/api";
 import {
@@ -51,6 +51,10 @@ async function setup(page: Page, existing = false, loadFailure = false) {
       contentKey: string;
     }>,
     upload: undefined as Buffer | undefined,
+    uploadPath: mediaPath,
+    uploadFailure: false,
+    holdUpload: false,
+    heldUpload: null as Route | null,
     loadFailure,
     draftLoadFailure: false,
     saveFailure: false,
@@ -127,11 +131,22 @@ async function setup(page: Page, existing = false, loadFailure = false) {
       json = { draft: state.drafts.get(key) ?? null };
     } else if (path.startsWith("/api/publish/media/recipes/")) {
       state.upload = request.postDataBuffer()!;
+      expect(request.headers()["x-csrf-token"]).toBe("recipe-test");
+      if (state.holdUpload) {
+        state.holdUpload = false;
+        state.heldUpload = route;
+        return;
+      }
+      if (state.uploadFailure)
+        return route.fulfill({
+          status: 503,
+          json: { error: "Image service unavailable" },
+        });
       json = {
-        path: mediaPath,
+        path: state.uploadPath,
         alt: "Pancakes cooking",
         version: "c".repeat(40),
-        publicUrl: `https://brendonbusker.github.io${mediaPath}`,
+        publicUrl: `https://brendonbusker.github.io${state.uploadPath}`,
       };
     } else if (path === "/api/publish") {
       const body = request.postDataJSON();
@@ -172,7 +187,7 @@ async function setup(page: Page, existing = false, loadFailure = false) {
     else throw new Error(`Unexpected request: ${method} ${path}`);
     await route.fulfill({ json });
   });
-  await page.route(`**${mediaPath}`, (route) =>
+  await page.route("**/uploads/recipes/weekend-pancakes/*", (route) =>
     route.fulfill({ contentType: "image/gif", body: gif }),
   );
   await page.goto("http://127.0.0.1:5173/");
@@ -454,3 +469,226 @@ for (const failure of ["saveFailure", "publishFailure"] as const) {
     expect(state.items[0]?.content.excerpt).toBe("Do not lose this recipe");
   });
 }
+
+test("a recipe cover uploads separately from the body and survives draft, publish, reopen and removal", async ({
+  page,
+}) => {
+  const state = await setup(page);
+  const coverPath = "/uploads/recipes/weekend-pancakes/finished.gif";
+  state.uploadPath = coverPath;
+  await page.getByRole("textbox", { name: /^Title/ }).fill(original.title);
+  await page.getByLabel("Breakfast", { exact: true }).check();
+  const body = page.locator(".document-surface");
+  await body.fill(
+    "Whisk the batter, then cook until golden. No photo is needed in these instructions.",
+  );
+  const instructions = await body.textContent();
+  const cover = page.locator(".recipe-cover-preview");
+  await expect(cover).toHaveCount(0);
+  page.once("dialog", (dialog) =>
+    dialog.accept("Finished pancakes with berries"),
+  );
+  await page
+    .getByLabel("Upload recipe cover photo", { exact: true })
+    .setInputFiles("tests/fixtures/animated.gif");
+  await expect(cover).toHaveAttribute("src", /^blob:/);
+  expect(state.upload?.includes(gif)).toBe(true);
+  await expect(body.locator("img")).toHaveCount(0);
+  await expect(body).toHaveText(instructions!);
+  await page
+    .getByLabel("Cover photo description", { exact: true })
+    .fill("Finished pancakes with berries");
+  await page.keyboard.press("Control+s");
+  await expect
+    .poll(
+      () =>
+        [...state.drafts.values()].find((draft) => draft.coverImage)
+          ?.coverImage,
+    )
+    .toEqual({ src: coverPath, alt: "Finished pancakes with berries" });
+  const draft = [...state.drafts.values()].find((value) => value.coverImage)!;
+  expect(draft.body).not.toContain("<img");
+  expect(JSON.stringify(draft)).not.toContain("blob:");
+
+  mkdirSync("tmp/recipes-qa", { recursive: true });
+  await page.locator(".recipe-cover").scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: "tmp/recipes-qa/recipe-cover-admin-desktop.png",
+  });
+  const bounds = await cover.boundingBox();
+  expect(bounds!.width / bounds!.height).toBeCloseTo(4 / 3, 2);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator(".recipe-cover").scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: "tmp/recipes-qa/recipe-cover-admin-mobile.png",
+  });
+  const mobile = await page.locator(".recipe-cover").boundingBox();
+  expect(mobile!.x).toBeGreaterThanOrEqual(0);
+  expect(mobile!.x + mobile!.width).toBeLessThanOrEqual(390);
+  await page.setViewportSize({ width: 1280, height: 720 });
+
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await page.getByRole("button", { name: "Recipes", exact: true }).click();
+  await page
+    .locator(".document-list")
+    .getByRole("button", { name: /Weekend pancakes/ })
+    .click();
+  await expect(
+    page.getByLabel("Cover photo description", { exact: true }),
+  ).toHaveValue("Finished pancakes with berries");
+  await expect(cover).toHaveAttribute(
+    "src",
+    `https://brendonbusker.github.io${coverPath}`,
+  );
+  await page.getByRole("button", { name: "Preview", exact: true }).click();
+  await expect(page.locator(".preview-canvas img")).toHaveCount(0);
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect.poll(() => state.writes.length).toBe(1);
+  expect(state.writes[0]!.payload.coverImage).toEqual(draft.coverImage);
+  expect(state.writes[0]!.payload.body).toBe(draft.body);
+  await expect(
+    page.getByRole("button", { name: "Publish", exact: true }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await page.getByRole("button", { name: "Recipes", exact: true }).click();
+  await page
+    .locator(".document-list")
+    .getByRole("button", { name: /Weekend pancakes/ })
+    .click();
+  await expect(cover).toHaveAttribute(
+    "src",
+    `https://brendonbusker.github.io${coverPath}`,
+  );
+  await page.getByRole("button", { name: "Remove cover", exact: true }).click();
+  await expect(cover).toHaveCount(0);
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect.poll(() => state.writes.length).toBe(2);
+  expect(state.writes[1]!.payload.coverImage).toBeUndefined();
+  expect(state.writes[1]!.payload.body).toBe(draft.body);
+});
+
+test("cover replacement preserves old choices on failure or cancellation and discards delayed uploads after choosing or removing", async ({
+  page,
+}) => {
+  const state = await setup(page, true);
+  const secondImagePath = "/uploads/recipes/weekend-pancakes/plated.gif";
+  const delayedPath = "/uploads/recipes/weekend-pancakes/delayed.gif";
+  await page.route("https://example.test/external.gif", (route) =>
+    route.fulfill({ contentType: "image/gif", body: gif }),
+  );
+  const body = page.locator(".document-surface");
+  await body.evaluate(
+    (element, paths) => {
+      const clipboard = new DataTransfer();
+      clipboard.setData(
+        "text/html",
+        `<p>Keep these instructions.</p><img src="${paths[0]}" alt="Pancakes cooking"><img src="${paths[1]}" alt="Pancakes plated"><img src="https://example.test/external.gif" alt="External image">`,
+      );
+      element.dispatchEvent(
+        new ClipboardEvent("paste", {
+          clipboardData: clipboard,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    },
+    [mediaPath, secondImagePath],
+  );
+  await expect(body.locator("img")).toHaveCount(3);
+  const cover = page.locator(".recipe-cover-preview");
+  await expect(cover).toHaveCount(0);
+  await page
+    .getByText("Use an uploaded image from this recipe", { exact: true })
+    .click();
+  await expect(page.locator(".recipe-cover-options button")).toHaveCount(2);
+  await expect(
+    page.getByRole("button", { name: /as cover: External image/ }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", {
+      name: "Use recipe image 1 as cover: Pancakes cooking",
+      exact: true,
+    })
+    .click();
+  await expect(cover).toHaveAttribute(
+    "src",
+    `https://brendonbusker.github.io${mediaPath}`,
+  );
+
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page
+    .getByLabel("Upload recipe cover photo", { exact: true })
+    .setInputFiles("tests/fixtures/animated.gif");
+  expect(state.upload).toBeUndefined();
+  await expect(cover).toHaveAttribute(
+    "src",
+    `https://brendonbusker.github.io${mediaPath}`,
+  );
+  state.uploadFailure = true;
+  page.once("dialog", (dialog) => dialog.accept("Replacement cover"));
+  await page
+    .getByLabel("Upload recipe cover photo", { exact: true })
+    .setInputFiles("tests/fixtures/animated.gif");
+  await expect(page.getByText(/Cover photo upload failed/)).toBeVisible();
+  await expect(cover).toHaveAttribute(
+    "src",
+    `https://brendonbusker.github.io${mediaPath}`,
+  );
+  state.uploadFailure = false;
+
+  for (const choice of ["another image", "remove"] as const) {
+    state.holdUpload = true;
+    state.heldUpload = null;
+    page.once("dialog", (dialog) => dialog.accept("Slow replacement"));
+    await page
+      .getByLabel("Upload recipe cover photo", { exact: true })
+      .setInputFiles("tests/fixtures/animated.gif");
+    await expect.poll(() => !!state.heldUpload).toBe(true);
+    await expect(
+      page.getByRole("button", { name: "Publish", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "New", exact: true }),
+    ).toBeDisabled();
+    await page.getByRole("button", { name: "Home", exact: true }).click();
+    await expect(page.getByRole("textbox", { name: /^Title/ })).toHaveValue(
+      original.title,
+    );
+    if (choice === "another image")
+      await page
+        .getByRole("button", {
+          name: "Use recipe image 2 as cover: Pancakes plated",
+          exact: true,
+        })
+        .click();
+    else
+      await page
+        .getByRole("button", { name: "Remove cover", exact: true })
+        .click();
+    await state.heldUpload!.fulfill({
+      json: {
+        path: delayedPath,
+        alt: "Slow replacement",
+        version: "c".repeat(40),
+        publicUrl: `https://brendonbusker.github.io${delayedPath}`,
+      },
+    });
+    await expect(
+      page.getByRole("button", { name: "Publish", exact: true }),
+    ).toBeEnabled();
+    if (choice === "another image")
+      await expect(cover).toHaveAttribute(
+        "src",
+        `https://brendonbusker.github.io${secondImagePath}`,
+      );
+    else await expect(cover).toHaveCount(0);
+    await expect(body.locator("img")).toHaveCount(3);
+  }
+  await page.keyboard.press("Control+s");
+  await expect
+    .poll(() => state.drafts.get(original.id)?.coverImage)
+    .toBeUndefined();
+  await page.getByRole("button", { name: "New", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: /^Title/ })).toHaveValue("");
+  await expect(cover).toHaveCount(0);
+});

@@ -7,6 +7,7 @@ import {
   excerptFromMarkdown,
   isAllowedRepositoryPath,
   postSchema,
+  recipeCoverImageSchema,
   recipeSchema,
   draftSchema,
   projectPageSchema,
@@ -92,6 +93,7 @@ describe("content schemas", () => {
       meals: recipe.meals,
       servings: "",
     });
+    expect(recipeSchema.parse(recipe)).not.toHaveProperty("coverImage");
     expect(
       recipeSchema.parse({
         ...recipe,
@@ -121,6 +123,58 @@ describe("content schemas", () => {
         payload: { meals: [] },
       }).contentType,
     ).toBe("recipe");
+  });
+  it("accepts explicit recipe covers with optional descriptive text", () => {
+    for (const src of [
+      "/uploads/recipes/chickpea-toast/cover.gif",
+      "/uploads/recipes/chickpea-toast/Cr%C3%A8me%20br%C3%BBl%C3%A9e.webp",
+      "/uploads/toast.jpg?size=800&signature=a%2Fb%3D",
+      "/uploads/toast%25.jpg",
+    ]) {
+      expect(recipeCoverImageSchema.parse({ src })).toEqual({ src, alt: "" });
+      expect(
+        recipeCoverImageSchema.parse({ src, alt: "Toast: crème fraîche 🥘" })
+          .alt,
+      ).toBe("Toast: crème fraîche 🥘");
+    }
+    expect(
+      recipeCoverImageSchema.safeParse({
+        src: "/uploads/cover.webp",
+        alt: "x".repeat(241),
+      }).success,
+    ).toBe(false);
+  });
+  it("rejects unsafe recipe cover paths and encoded traversal", () => {
+    for (const src of [
+      "",
+      "//images.example.com/toast.jpg",
+      "https://images.example.com/toast.jpg",
+      "http://images.example.com/toast.jpg",
+      "https://brendonbusker.github.io/uploads/recipes/toast.jpg",
+      "/assets/toast.jpg",
+      "uploads/toast.jpg",
+      "blob:https://example.com/photo",
+      "data:image/png;base64,AAAA",
+      "javascript:alert(1)",
+      "https://user:secret@example.com/toast.jpg",
+      " https://example.com/toast.jpg",
+      "/uploads/../private.jpg",
+      "/uploads/./cover.jpg",
+      "/uploads/%2e%2e/private.jpg",
+      "/uploads/%252e%252e%252fprivate.jpg",
+      "/uploads/photos%2f..%2fprivate.jpg",
+      "/uploads/photos\\..\\private.jpg",
+      "/uploads/photos%255cprivate.jpg",
+      "https://example.com/../private.jpg",
+      "/uploads/cover\n.jpg",
+      "/uploads/cover%00.jpg",
+      "/uploads/cover%250a.jpg",
+      "/uploads/cover%C2%85.jpg",
+      `/uploads/${"x".repeat(2048)}.jpg`,
+    ])
+      expect(recipeCoverImageSchema.safeParse({ src }).success, src).toBe(
+        false,
+      );
   });
   it("validates public appearance choices", () => {
     const appearance = appearanceSchema.parse({

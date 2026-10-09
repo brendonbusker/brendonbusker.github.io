@@ -38,6 +38,10 @@ const base: Recipe = {
   prepMinutes: 10,
   cookMinutes: 15,
   servings: "4 people",
+  coverImage: {
+    src: "/uploads/recipes/qa-recipe-pancakes/cover.gif",
+    alt: "Pancakes served with berries",
+  },
   body: '<h2>Ingredients</h2><ul><li>Cardamom</li><li>Milk</li></ul><h2>Instructions</h2><p>Whisk, then cook.</p><img src="/uploads/recipes/qa-recipe-pancakes/animated.gif" alt="Cooking pancakes" data-layout="block">',
 };
 const recipes: Recipe[] = [
@@ -51,7 +55,8 @@ const recipes: Recipe[] = [
     prepMinutes: undefined,
     cookMinutes: undefined,
     servings: "",
-    body: "<p>Simmer chickpeas and lemon.</p>",
+    coverImage: undefined,
+    body: "![Simmering soup](/uploads/recipes/qa-recipe-soup/body.gif)\n\n## Method\n\nSimmer chickpeas and lemon.",
   },
   {
     ...base,
@@ -66,7 +71,9 @@ const recipes: Recipe[] = [
     id: randomUUID(),
     title: `Collection recipe ${String(index).padStart(3, "0")}`,
     slug: `${prefix}collection-${index}`,
+    excerpt: "A collection recipe.",
     meals: ["dinner"],
+    coverImage: undefined,
     body: `<p>Tomatoes and parsley. Collection marker ${index}.</p>`,
   })),
 ];
@@ -251,6 +258,9 @@ test("recipe detail renders structured facts, rich text, GIFs and print layout w
   ).toBeVisible();
   await expect(page.locator(".recipe-body li")).toHaveCount(2);
   await expect(page.locator(".recipe-document time")).toHaveCount(0);
+  await expect(page.locator(`img[src="${base.coverImage!.src}"]`)).toHaveCount(
+    0,
+  );
   const image = page.getByRole("img", {
     name: "Cooking pancakes",
     exact: true,
@@ -273,6 +283,65 @@ test("recipe detail renders structured facts, rich text, GIFs and print layout w
   await expect(page.locator(".recipe-facts")).toHaveCount(0);
   const response = await page.goto(`${publicUrl}/recipes/${prefix}private/`);
   expect(response?.status()).toBe(404);
+});
+
+test("gallery uses only the selected cover while inline photos and Markdown search stay in the recipe", async ({
+  page,
+}, testInfo) => {
+  await page.route("**/uploads/recipes/qa-recipe-*/*.gif", (route) =>
+    route.fulfill({
+      contentType: "image/gif",
+      path: "tests/fixtures/animated.gif",
+    }),
+  );
+  await page.goto(`${publicUrl}/recipes/`);
+  const pancakes = page
+    .locator(".recipe-entry")
+    .filter({
+      has: page.getByRole("heading", { name: base.title, exact: true }),
+    });
+  const soup = page
+    .locator(".recipe-entry")
+    .filter({
+      has: page.getByRole("heading", { name: "Lemon soup", exact: true }),
+    });
+  const selectedCover = pancakes.locator(".recipe-cover img");
+  await expect(selectedCover).toHaveAttribute("src", base.coverImage!.src);
+  await expect(selectedCover).toHaveAttribute("alt", base.coverImage!.alt);
+  await expect(pancakes.locator("img")).toHaveCount(1);
+  await expect(soup.locator("img")).toHaveCount(0);
+  await expect(soup).toHaveClass(/recipe-entry-text/);
+
+  const query = page.getByRole("searchbox", { name: "Find a recipe" });
+  await query.fill("chickpeas lemon");
+  await expect(page.locator(".recipe-entry:visible")).toHaveCount(1);
+  await expect(soup).toBeVisible();
+  await query.fill("weekend");
+  // Both featured fixtures share this excerpt; the two layouts remain side by side.
+  await expect(page.locator(".recipe-entry:visible")).toHaveCount(2);
+  for (const viewport of [
+    { width: 1365, height: 1000 },
+    { width: 390, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expect(selectedCover).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - innerWidth,
+      ),
+    ).toBeLessThanOrEqual(1);
+    await page.screenshot({
+      path: testInfo.outputPath(`recipe-cover-gallery-${viewport.width}.png`),
+      fullPage: true,
+    });
+  }
+  await page.goto(`${publicUrl}/recipes/${prefix}soup/`);
+  await expect(
+    page.getByRole("img", { name: "Simmering soup", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Method", exact: true }),
+  ).toBeVisible();
 });
 
 test("the recipe collection remains readable without JavaScript and mobile navigation fits", async ({

@@ -308,6 +308,73 @@ describe("recipe publishing", () => {
     expect(await emptyResponse.json()).toEqual({ items: [] });
   });
 
+  it("round-trips explicit cover metadata without changing the recipe body", async () => {
+    const input: Recipe = {
+      ...recipe,
+      coverImage: {
+        src: "/uploads/recipes/chickpea-toast/cover.gif",
+        alt: 'Toast with "crème fraîche" 🥘\nstatus: draft',
+      },
+    };
+    const serialized = serializeContent("recipe", input);
+    const parsed = parseManagedMarkdown(serialized.content);
+    expect(recipeSchema.parse({ ...parsed.data, body: parsed.body })).toEqual(
+      input,
+    );
+    expect(serialized.content).toContain(
+      `coverImage: ${JSON.stringify(input.coverImage)}\n`,
+    );
+    expect(parsed.body).toBe(recipe.body);
+
+    const mock = await setup(input);
+    const response = await mock.request("/api/published/recipes");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      items: [{ content: input, path, sha }],
+    });
+  });
+
+  it("removes omitted cover metadata when republishing and keeps inline images", async () => {
+    const input: Recipe = {
+      ...recipe,
+      body: `${recipe.body}<img src="/uploads/recipes/chickpea-toast/inline.gif" alt="Toast" data-layout="block" />`,
+    };
+    const mock = await setup({
+      ...input,
+      coverImage: {
+        src: "/uploads/recipes/chickpea-toast/cover.gif",
+        alt: "Gallery cover",
+      },
+    });
+    const response = await mock.request("/api/publish", "POST", {
+      contentType: "recipe",
+      payload: input,
+      targetPath: path,
+      expectedSha: sha,
+    });
+    expect(response.status).toBe(200);
+    expect(mock.writes).toHaveLength(1);
+    const saved = parseManagedMarkdown(
+      Buffer.from(mock.writes[0]!.payload.content, "base64").toString(),
+    );
+    expect(saved.data).not.toHaveProperty("coverImage");
+    expect(saved.body).toBe(input.body);
+  });
+
+  it("rejects unsafe cover sources before publishing", async () => {
+    const mock = await setup();
+    const response = await mock.request("/api/publish", "POST", {
+      contentType: "recipe",
+      payload: {
+        ...recipe,
+        coverImage: { src: "/uploads/%2e%2e/private.jpg" },
+      },
+    });
+    expect(response.status).toBe(400);
+    expect(mock.writes).toHaveLength(0);
+    expect(mock.mutations).toHaveLength(0);
+  });
+
   it("does not hide repository access errors, partial responses or missing files as empty libraries", async () => {
     for (const status of [403, 500]) {
       const mock = await setup();

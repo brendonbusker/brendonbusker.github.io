@@ -816,6 +816,9 @@ export function serializeContent(
         ? []
         : [`cookMinutes: ${recipe.cookMinutes}`]),
       `servings: ${escapeYaml(recipe.servings)}`,
+      ...(recipe.coverImage
+        ? [`coverImage: ${JSON.stringify(recipe.coverImage)}`]
+        : []),
     ];
     return {
       path: targetPath || `apps/site/src/content/recipes/${recipe.slug}.md`,
