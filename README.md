@@ -1,216 +1,36 @@
-# Brendon Busker — personal site and publishing CMS
+# Brendon Busker — Personal Website
 
-Agent/model transitions should begin with [`PROJECT_HANDOFF.md`](./PROJECT_HANDOFF.md), then use `kickoff.txt` for the original product specification.
+[Visit my website](https://brendonbusker.github.io)
 
-This repository contains two deliberately different products:
+This is the source for my personal website: a place to share what I'm building, write about what I've been working on, keep my résumé current, and collect recipes I actually make.
 
-- `apps/site`: a warm, editorial Astro website that is statically generated and hosted by GitHub Pages. Its homepage, notes, projects, résumé, RSS feed, sitemap, and permanent post URLs continue to work even if Cloudflare is unavailable.
-- `apps/admin`: a private React/Fluent publishing suite served from the same Cloudflare Worker origin as its API. D1 holds private drafts, sessions, and bounded security logs. Publishing validates content and writes only allowlisted files to this repository through GitHub's API.
-- `packages/shared`: Zod schemas and security-safe content, URL, slug, session, Markdown, and repository-path utilities used at trust boundaries.
+I wanted a site that felt like my own space and that I could keep updating as my interests and projects grew. That meant working on both the pages people visit and the tools I use to publish them. Behind the public website is a custom private content-management system where I can write, upload photos, manage projects, and publish updates without editing source files each time.
 
-The public `/admin/` page contains no CMS or credentials. It is a small gateway that uses `location.replace()` to open the same-origin Cloudflare application, allowing `HttpOnly`, `Secure`, `SameSite=Strict`, `__Host-` session cookies.
+## The website
 
-## Repository map
+The public design centers on typography, spacing, and a clear reading order. Newsreader headings and Inter body text give it an editorial feel, with subtle rules between sections and project cards for browsing my work. Visitors can choose from several themes, and the layout adapts to phones as well as larger screens.
 
-```text
-apps/
-  site/                 Astro public site and published content
-    src/content/        Published notes and projects
-    src/data/           Published homepage and résumé data
-    public/             Stable résumé PDF and published media
-  admin/                React CMS, Worker, Wrangler config, D1 migrations
-packages/shared/        Runtime schemas and security utilities
-scripts/                Interactive secret initialization
-.github/workflows/      Pages and manual Cloudflare deployments
-tests/e2e/              Playwright public-site and CMS browser tests
-```
+The main sections bring together different parts of what I do:
 
-## Local development
+- **Blog:** a searchable archive of writing and updates, with permanent post links and an RSS feed.
+- **Projects:** a portfolio with screenshots, links, and detail views that can be opened directly and navigated with the keyboard.
+- **Recipes:** a searchable collection with Breakfast, Lunch, Dinner, and Snack labels, optional cooking times and servings, photos I choose for the covers, and printable recipe pages.
+- **Résumé:** a web version alongside a downloadable PDF that I can generate and update through the admin.
 
-Requirements: Node.js 22.12+, pnpm 11+, and a free Cloudflare account for Worker integration.
+## Behind the scenes
 
-```bash
-pnpm install
-pnpm --filter @brendon/site dev
-pnpm --filter @brendon/admin dev
-```
+The public site uses **Astro and TypeScript** and is built into static pages hosted on **GitHub Pages**. Blog and recipe search run in the browser over published content. Visitors can read the site without depending on the private publishing service being online.
 
-The public site uses `http://127.0.0.1:4321`; the CMS UI uses `http://127.0.0.1:5173`. To run the Worker locally, copy `apps/admin/.dev.vars.example` to `apps/admin/.dev.vars`, replace the safe placeholders locally, apply the local database migration, and start Wrangler:
+The admin uses **React, Fluent UI, and Tiptap**, with a Word-style editor for formatting text, pasting recipes or articles, adding tables, and working with photos and animated GIFs. **Cloudflare Workers** serves the admin and its API, while **D1** stores private drafts and sessions. Shared **Zod** schemas keep content validation consistent between the editor, publishing API, and website.
 
-```bash
-pnpm --filter @brendon/admin db:migrate:local
-pnpm --filter @brendon/admin worker:dev
-```
+Publishing turns an edit into a Git commit, which triggers the public site's build. That gives published content a version history while keeping everyday editing in the admin. A status banner follows the build and checks the deployed site before reporting that an update is live.
 
-The Vite server proxies `/api` to `http://127.0.0.1:8787`. `.dev.vars`, `.env`, production secrets, build output, and source maps are ignored by Git.
+## The work beyond the pages
 
-## Editing and publishing
+A lot of the work has gone into making editing dependable: autosaving drafts, preserving text when a session expires, waiting for image uploads before publishing, and checking for newer published edits before overwriting a file. Recipe cover photos are stored separately from the images inside the instructions, and animated GIF uploads preserve their animation.
 
-Recipes has its own public collection at `/recipes/` and its own section in the CMS. Each recipe can be marked Breakfast, Lunch, Dinner, and/or Snack, with optional prep time, cook time, and servings. The editor shares Blog's full Word-style formatting ribbon, rich-text paste, image/GIF uploads, draft saving, preview, and publishing. In **Cover photo**, upload a finished-dish photo or explicitly choose an image already in the recipe, edit its description, replace it, or remove it. The cover is saved separately from the instructions and appears on the Recipes gallery card; it is not inserted into the recipe body. Recipes without a selected cover use a text layout, even when their instructions contain photos. Published recipe addresses stay at `/recipes/<slug>/` when titles change.
+The résumé tools generate PDFs in the browser using locally bundled font data. I can preview and download a document, then publish the PDF and web résumé independently. Theme settings, page introductions, project visibility, and homepage content are also editable through the CMS.
 
-Visitors can combine a meal filter with searches across recipe titles, descriptions, and recipe text (including ingredients). Searches ignore case, accents, and punctuation and support shareable `?q=...&meal=...` URLs. Only published recipes enter the static search index. The entire collection remains readable without JavaScript; recipe pages include a print layout.
+The publishing service includes server-side authentication, session expiry, CSRF protection, login rate limits, and validation of content and upload destinations. Automated unit and browser tests cover the publishing flows, editor recovery, search, themes, mobile layouts, and keyboard interactions.
 
-Before the first authorized release of Recipes, apply `apps/admin/migrations/0002_recipe_drafts.sql` to D1 **before deploying the new Worker**. It expands the permitted draft types while preserving existing drafts, IDs, and timestamps. Test it locally with `pnpm --filter @brendon/admin db:migrate:local`; during an explicitly authorized production release, use `pnpm --filter @brendon/admin db:migrate:remote`, then deploy the admin and release the public site through the usual workflow. No new secret or database is required. This migration is not applied remotely by ordinary frontend builds.
-
-The manual “Deploy private CMS to Cloudflare” workflow applies pending D1 migrations before deploying the Worker and stops on migration failure. It uses the existing Cloudflare Actions secrets. A push to `main` deploys only the public site; it does not start this private CMS workflow.
-
-Visitors can search `/blog/` (and legacy `/notes/`) by title, description, or article text. Results filter as they type, retain newest-first ordering, and can be shared using the `?q=` URL. Clear search restores the complete archive. Search is generated from published posts during each site build and runs in the browser without a backend request; drafts remain private. The archive remains readable without JavaScript.
-
-The CMS sections are Home, Posts, Projects, Résumé, Site, and Settings.
-
-- Posts use a Word-inspired Tiptap editor with semantic headings, text emphasis, lists, quotes, code, links, images, tables, undo/redo, `Ctrl/Cmd+S`, debounced autosave, preview, and publish status.
-- Blog **Insert image**, **Ctrl/Cmd+V**, and the ribbon **Paste** button support JPEG, PNG, WebP, AVIF, and animated GIF files supplied by the clipboard. Pasting asks for an accessible description and uses the same GitHub uploader. Multiple images upload in order; you can keep typing while they upload, and Publish waits for completion. Normal text pasting is unchanged. GIFs keep their original animation and resolution, with a 6 MB upload limit. Some browsers supply a still PNG when copying a GIF from a webpage; copy the original GIF file or use Insert image to preserve animation in that case. Other formats continue through WebP optimization. Uploaded images become publicly available after their GitHub Pages deployment completes.
-- New posts receive their publication date and time automatically when Publish reaches the server, using the published site timezone. Reopen a published post to edit its date/time; ordinary edits preserve its original timestamp. The homepage, archives, adjacent-post navigation, and RSS sort by the full timestamp. Times display with the timezone, and time-only edits preserve post URLs. Central abbreviations such as `CST` use `America/Chicago` with daylight-saving adjustments.
-- Project records support ordering, publication state, icons, accent color, story fields, features, technology, URLs, and published media paths. Clicking a public project opens an accessible history-aware dialog at `/projects/?project=slug`.
-- In Projects, **Publish** makes a new or hidden project visible and applies edits to an existing project. Draft autosaving does not publish it. **Hide from website** is a separate confirmed action; publishing again restores visibility. The editor waits for pending draft saves before publishing and pauses editing until the request finishes.
-- The résumé editor includes **Generate PDF**. It reproduces the original `resume.pdf` layout with Standard 14 Times fonts, a centered name/contact line, ruled headings, compact hyphen bullets, and the section order Skills → Experience → Projects → Education → Certifications. The approved reference content fits on one Letter page, with selectable text and automatic pagination for longer edits. The website headline, summary and role descriptions are omitted. Contact details, project technologies/links/bullets, education dates and certifications are editable in the CMS. Font metrics are bundled locally; nothing is sent to an external service. **Before applying** offers content checks and tailoring guidance. Review the preview, **Download PDF** for applications, or **Publish PDF to website** to replace the stable downloadable PDF. Changing the editor content requires regeneration before download/publish. Generation stays private in the browser and does not publish the web résumé or replace the PDF until you choose Publish PDF. Existing **Replace PDF** upload remains available.
-- Homepage fields and harmless site settings publish to validated JSON.
-- In **Blog → Edit page introduction**, change the eyebrow, headline, and supporting description above the archive. Preview the copy and select **Publish introduction**. These fields live separately from posts in `apps/site/src/data/blog-page.json`; both `/blog/` and the legacy `/notes/` archive use them. Reopening loads the latest published version and publishing checks its GitHub SHA to prevent overwriting newer edits.
-
-Drafts stay in D1. Publishing validates the complete payload, derives the repository destination server-side, commits with a human-readable message, and reports that GitHub Pages deployment is in progress. The Worker cannot write `.github/workflows/` or accept an arbitrary repository path.
-
-The publication banner tracks the latest publish made in this browser across admin sections and page refreshes. It shows Publishing, Waiting for build, Building, and Live, with a link to the affected page once verified. Failed/cancelled builds link to GitHub build details; temporary status errors offer Check again without republishing. Posts, deletion, introductions, projects, site settings, images/GIFs, and résumé PDFs all participate. Automatic checks run every 30 seconds for up to ten minutes, then require a manual check. “Live” requires the public `/deployment.json` build marker to contain the publish commit or a descendant, so newer builds can safely supersede earlier builds. Public Actions metadata is read without additional token permissions; commit ancestry uses the existing Contents permission. No private data is included in the public marker.
-
-Publication status checks retry temporary network/time-out/server errors automatically after 5, 15, and 30 seconds, showing Rechecking status instead of a raw browser error. After repeated failures they offer Check again; an expired session requires sign-in. Each check times out after 20 seconds and is cancelled when the banner is dismissed or replaced. Publishing requests themselves are never retried automatically.
-
-## Initial GitHub setup
-
-1. Create or rename the repository to `brendonbusker/brendonbusker.github.io`, with the default branch `main`. The public URL is already configured from the GitHub profile and project links in the supplied résumé.
-2. Confirm the repository default branch is `main`.
-3. Push this repository to `main`.
-4. In GitHub, open **Settings → Pages** and set **Source** to **GitHub Actions**.
-5. Run the “Deploy public site to GitHub Pages” workflow or push a public-site/content change.
-6. Confirm `https://brendonbusker.github.io`, `/notes/`, `/projects/`, `/resume/`, `/rss.xml`, and `/admin/` load.
-
-The Pages workflow has only `contents: read`, `pages: write`, and `id-token: write`. The public build never receives the CMS GitHub token.
-
-## Fine-grained GitHub publishing token
-
-Create a fine-grained personal access token in GitHub under **Settings → Developer settings → Personal access tokens → Fine-grained tokens**:
-
-1. Choose the account that owns `brendonbusker.github.io` as resource owner.
-2. Set repository access to **Only select repositories**, then select only `brendonbusker.github.io`.
-3. Under repository permissions, set **Contents: Read and write**.
-4. Leave Administration, Actions, Workflows, Issues, Pull requests, and every other permission at **No access**.
-5. Choose a practical expiration and record a rotation reminder.
-6. Do not add the token to `.env`, `.dev.vars` in source control, GitHub Actions, D1, or frontend configuration. Store it directly in Cloudflare:
-
-```bash
-cd apps/admin
-pnpm exec wrangler secret put GITHUB_TOKEN
-```
-
-To rotate it, create the replacement token, run the same `wrangler secret put GITHUB_TOKEN` command, verify a CMS publish, then revoke the old token.
-
-## Cloudflare setup and deployment
-
-All commands below run from `apps/admin` unless shown otherwise.
-
-1. Authenticate your local machine:
-
-   ```bash
-   pnpm exec wrangler login
-   ```
-
-2. Create D1:
-
-   ```bash
-   pnpm exec wrangler d1 create personal-site-cms
-   ```
-
-   Copy the returned database ID into `d1_databases[0].database_id` in `wrangler.jsonc`.
-
-3. Replace `REPLACE_WITH_WORKERS_SUBDOMAIN` with the workers.dev subdomain shown by Cloudflare. Keep the two rate-limit bindings at 5 attempts/minute per protected IP fingerprint and 25 verification attempts/minute globally. These run before Turnstile, D1 session work, or PBKDF2 verification.
-
-4. Apply the remote migration:
-
-   ```bash
-   pnpm db:migrate:remote
-   ```
-
-5. In the Cloudflare dashboard, create a Turnstile widget in **Managed** mode, restricted to the final admin hostname. Put its public site key in `wrangler.jsonc`, then store its secret:
-
-   ```bash
-   pnpm exec wrangler secret put TURNSTILE_SECRET_KEY
-   ```
-
-6. Store the repository-scoped GitHub token as described above.
-
-7. From the repository root, initialize the administrator credentials. The script hides the 20+ character password, confirms it, generates a random salt and pepper, derives a PBKDF2-HMAC-SHA-256 verifier, and pipes only secrets to Wrangler. Plaintext is never printed or written:
-
-   ```bash
-   pnpm setup:admin-password
-   pnpm setup:session-secret
-   ```
-
-   On Windows, `pnpm setup:admin-password -- --generate` can instead create a
-   random 32-character password and place the one-time plaintext value on the
-   clipboard. Save it immediately in a password manager; only the derived
-   verifier, salt, and pepper are stored in Cloudflare.
-
-8. Deploy:
-
-   ```bash
-   pnpm --filter @brendon/admin run deploy
-   ```
-
-9. Update `adminUrl` in `apps/site/src/data/site.json` and `ADMIN_ORIGIN` in `apps/admin/wrangler.jsonc` to the exact deployed HTTPS origin. Redeploy both applications.
-
-10. Visit `https://brendonbusker.github.io/admin/`, sign in, save a test draft, preview it, publish it, and confirm the GitHub Pages workflow creates the dated page and updates the homepage/archive.
-
-For optional GitHub-initiated Worker deployments, add `CLOUDFLARE_API_TOKEN` with Workers Scripts and D1 edit permission, plus `CLOUDFLARE_ACCOUNT_ID`, as GitHub Actions repository secrets. The admin workflow is manual-only so a normal content push cannot unexpectedly deploy the Worker.
-
-## Secrets and rotation
-
-Production secrets are `ADMIN_USERNAME`, `ADMIN_PASSWORD_VERIFIER`, `ADMIN_PASSWORD_SALT`, `ADMIN_PASSWORD_PEPPER`, `SESSION_SECRET`, `IP_HASH_SECRET`, `GITHUB_TOKEN`, and `TURNSTILE_SECRET_KEY`. List secret names with `wrangler secret list`; Cloudflare does not reveal values.
-
-- Change the password by rerunning `pnpm setup:admin-password`. Existing sessions should also be removed from D1 or the session secret rotated.
-- Rotate session/privacy secrets with `pnpm setup:session-secret`, then clear the `sessions` table to invalidate all cookies.
-- Rotate the GitHub token as described above.
-- Rotate the Turnstile secret with `wrangler secret put TURNSTILE_SECRET_KEY` after replacing it in Cloudflare.
-
-## Backups and recovery
-
-Published content and each résumé PDF version live in Git history. Restore an earlier normal content file with a new revert commit; do not rewrite the public branch. Private drafts live in D1 and should be exported periodically with Wrangler's D1 export facilities. Session and security-event records are disposable and must not be restored across secret rotation.
-
-## Validation
-
-ESLint checks JavaScript, TypeScript, React hooks/Fast Refresh, and Astro components/scripts using `eslint.config.mjs`. Generated output and test reports are excluded. Lint warnings fail the command, and both deployment workflows run it before deploying. Keep type checking as a separate check.
-
-```bash
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
-pnpm test:e2e
-```
-
-The unit suite covers schemas, URL protocol rejection, slugging, Markdown sanitization/serialization behavior, password-verifier derivation, session expiration, CSRF comparison, and repository path allowlisting. Worker tests cover public configuration, missing sessions, origin rejection, limiter ordering, and generic authentication errors. Playwright covers public routes, PDF links, mobile navigation, keyboard project dialogs, escape/focus restoration, browser history/deep links, login presentation, the CMS shell, and editor access.
-
-## Security checklist
-
-- [x] No plaintext password, password verifier, Turnstile secret, session secret, or GitHub token is committed or bundled.
-- [x] Password verification is server-side PBKDF2-HMAC-SHA-256 with per-install salt and pepper after abuse checks.
-- [x] Per-IP and global Cloudflare rate limiters execute before Turnstile and password verification.
-- [x] Turnstile requires server-side verification and an admin-hostname-restricted widget.
-- [x] Sessions use a random 256-bit token; only its SHA-256 hash is in D1.
-- [x] The cookie is `__Host-`, `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/`, with no Domain.
-- [x] Idle and absolute expiry are enforced server-side; logout deletes the session immediately.
-- [x] Mutations require exact Origin and a session-bound CSRF token; permissive CORS is absent.
-- [x] External URL protocols, slugs, dates, payload size, schemas, Markdown, image types/signatures, PDF signature, and repository paths are validated.
-- [x] The Worker constructs destinations and explicitly rejects traversal and `.github/workflows/`.
-- [x] Strong CSP, clickjacking, MIME-sniffing, referrer, permissions, and HSTS headers are set on the CMS.
-- [x] Security logs exclude secrets and raw IPs, cap retention, and use a keyed IP fingerprint.
-- [x] Admin production source maps are disabled; security does not rely on source secrecy.
-- [x] Public pages are static and remain available during Worker or free-tier exhaustion.
-- [x] Cloudflare/D1, Turnstile, production origins, repository owner, and required Worker secrets are configured.
-- [x] The GitHub publishing token is limited to `brendonbusker.github.io` with Contents read/write only, and Turnstile is restricted to the production admin hostname.
-
-## Current limitations and sensible next steps
-
-- GitHub's Contents API gives safe optimistic updates for each normal content file. A future media-heavy editor could use the Git Data API to group several already-validated images and content into one atomic commit.
-- The browser should downscale screenshots before upload; the Worker independently enforces signatures and size. Cloudflare Image Resizing is intentionally not required because it can introduce paid usage.
-- On September 10, 2026 the user explicitly selected `resume.pdf` as the source of truth for both résumé content and PDF layout. The published résumé fields were synchronized to it; preserve subsequent CMS edits. Web résumé and PDF publishing remain separate actions.
-- TOTP can be added behind the existing authentication boundary later; password + Turnstile + layered throttling is the launch configuration.
-- Topic tags can be added when useful; the year-grouped archive now includes text search and stays readable without JavaScript.
-- A custom domain can move the CMS to `admin.example.com` without changing the same-origin session model.
+This repository holds the public site in `apps/site`, the publishing application in `apps/admin`, and their shared schemas and utilities in `packages/shared`. The [project handoff](PROJECT_HANDOFF.md) contains maintenance notes and development history; [kickoff.txt](kickoff.txt) records the original brief. The site continues to grow as I use it and find things I want to add or improve.

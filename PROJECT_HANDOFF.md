@@ -1,6 +1,6 @@
 # Personal Homepage / Private CMS — Agent Handoff
 
-Last updated: October 9, 2026 (explicit recipe cover photos)
+Last updated: November 8, 2026 (README introduction and maintenance reference)
 
 Repository: `brendonbusker/brendonbusker.github.io`
 
@@ -183,6 +183,16 @@ Production secret names include:
 - `TURNSTILE_SECRET_KEY`
 
 The username/password are not needed for normal code changes. The user holds the working login credentials.
+
+### Publishing credentials and recovery reference
+
+The user requested a project introduction in `README.md` on November 8, replacing its tutorial format. Keep setup commands and maintenance procedures in this handoff rather than rebuilding the README as a starter guide. Existing resources are configured; the original first-time setup instructions are not tasks to repeat.
+
+- The fine-grained publishing token selects only `brendonbusker.github.io`, with **Contents: Read and write**. Administration, Actions, Workflows and other optional permissions remain **No access**; GitHub grants Metadata read access automatically. The public Pages build never receives this token. To rotate it, create a replacement with the same scope, store it with `pnpm --filter @brendon/admin exec wrangler secret put GITHUB_TOKEN`, verify the next authorized CMS publication, then revoke the old token. Do not create production test content solely to check credentials.
+- The manual Cloudflare deployment workflow uses repository secrets `CLOUDFLARE_API_TOKEN` (Workers Scripts and D1 edit permission) and `CLOUDFLARE_ACCOUNT_ID`. Normal content pushes do not dispatch that workflow.
+- The root `pnpm setup:admin-password` script replaces the password verifier, salt and pepper without printing the password. Credential rotation must also invalidate existing sessions. The root `pnpm setup:session-secret` script replaces session/privacy secrets; clear existing D1 session records as part of an authorized rotation. These are maintenance actions, not development prerequisites.
+- Turnstile secret rotation uses `pnpm --filter @brendon/admin exec wrangler secret put TURNSTILE_SECRET_KEY` after replacing the secret in Cloudflare. Never print secret values or store them in tracked files.
+- Published content and uploaded PDF versions are recoverable from Git history. Restore content with a new commit rather than rewriting `main`. Private drafts require a separate D1 backup through Wrangler's D1 export facilities; keep that export outside Git and handle it as private data. Session and security-event records are disposable and must not be restored across secret rotation.
 
 ## Development and validation
 
