@@ -3,8 +3,8 @@ id: "380a573e-c420-41c9-a409-9104624f1a49"
 title: "Monado II"
 slug: "monado-ii"
 summary: "Xenoblade Chronicles: Definitive Edition, recompiled for PC."
-category: "Web application"
-status: "In progress"
+category: "Video Game Recompilation"
+status: "Complete"
 featured: true
 published: true
 sortOrder: 0
