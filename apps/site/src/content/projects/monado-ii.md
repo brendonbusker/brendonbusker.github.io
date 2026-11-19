@@ -10,7 +10,7 @@ published: true
 sortOrder: 0
 liveUrl: "https://github.com/brendonbusker/Monado-II"
 githubUrl: "https://github.com/brendonbusker/Monado-II"
-icon: "sparkles"
+icon: "gamepad"
 accent: "#c01c28"
 techStack: []
 screenshots: [{"src":"/uploads/projects/monado-ii/1795059458167-a85cf14e-b815-4184-b965-3e65eeb5f44c.webp","alt":"Launcher-monado-II"}]
