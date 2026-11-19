@@ -156,25 +156,25 @@
     },
     {
       "id": "6480a0ae-0654-46ca-bd07-ef820aebf160",
-      "name": "Personal Website",
+      "name": "Monado II (Native Linux Game Port)",
       "summary": "",
-      "url": "https://brendonbusker.github.io/",
+      "url": "https://github.com/brendonbusker/Monado-II/releases/tag/v0.1.30",
       "techStack": [
-        "Astro",
-        "React",
-        "TypeScript",
-        "Hono",
-        "Cloudflare Workers",
-        "D1/SQLite",
-        "GitHub Actions",
-        "GitHub Pages"
+        "C",
+        "C++",
+        "Python",
+        "Vulkan",
+        "SDL3",
+        "Zig",
+        "AppImage",
+        "GitHub Actions"
       ],
-      "githubUrl": "https://github.com/brendonbusker/brendonbusker.github.io",
+      "githubUrl": "https://github.com/brendonbusker/Monado-II",
       "accomplishments": [
-        "Built and deployed a personal website with a custom private CMS featuring rich-text publishing, animated media uploads, blog search, résumé PDF generation, and automated deployments using Astro, React, TypeScript, and Cloudflare Workers."
+        "Ported an existing Xenoblade Chronicles: Definitive Edition recompilation to native Linux x86-64, adding NVIDIA DLSS/DLAA, AMD FSR frame generation, and ultra-wide modes. Built an AppImage installer and updater that compile the game locally from player-provided files, and verified that an in-place upgrade preserved saves and settings. Maintained Linux and Windows CI with GitHub Actions and published 31 releases that recorded over 5,700 GitHub release-asset downloads. Directed Codex agents through implementation, debugging, and regression testing, then play tested release candidates and made the final release decisions."
       ]
     }
   ],
   "pdfPath": "/resume/Brendon-Busker-Resume.pdf",
-  "updatedAt": "2026-09-10"
+  "updatedAt": "2026-11-19"
 }
