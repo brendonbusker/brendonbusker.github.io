@@ -1,6 +1,6 @@
 # Personal Homepage / Private CMS — Agent Handoff
 
-Last updated: November 8, 2026 (README introduction and maintenance reference)
+Last updated: November 18, 2026 (expanded project icon choices)
 
 Repository: `brendonbusker/brendonbusker.github.io`
 
@@ -47,6 +47,16 @@ This work started from `3dc9e90`, including the user's October 9 recipe publicat
 Validation passed: all 91 unit tests, all 56 browser tests (`--workers=2`), lint, workspace typechecks and site/admin production builds. New checks cover separate cover uploads with no inline images, draft/publish/reopen/removal, unchanged recipe body, GIF preservation, cancelled/failed replacements, delayed upload selection/removal races, navigation locks, safe metadata round-trips and explicit-only public covers. Desktop/mobile controls and gallery screenshots were inspected. The normal site build contains 18 pages and both real recipes; existing published recipe files and photos remain unchanged.
 
 With user approval, this feature was released to `main` as `5bc85b35aed4aec6f8df7f53bf4d788141e00f1e` on October 9. [GitHub Pages run 37970772143](https://github.com/brendonbusker/brendonbusker.github.io/actions/runs/37970772143) succeeded and the live `/deployment.json` matched that exact commit. Both real gallery cards now omit covers until the user selects and publishes one; the chicken recipe's two inline images retain their exact attributes and uploaded bytes. The private CMS was deployed through Wrangler as Worker version `f27568b1-860b-4d75-89e2-f2b2dfd22fbf`. After brief propagation, live HTML, entry/editor/save-status JavaScript and CSS matched the local build; HTML remained `no-cache` and recipe APIs required authentication. No production test content, recipe edits, migrations or secret changes were made.
+
+### Project icon choices — November 18, 2026
+
+The Projects editor now offers 21 icons, including Game controller (`gamepad`), Code, Terminal, Globe, Monitor, Smartphone, Robot, Tools, Art palette, Camera, Music, Book, Chart, Database, Shield, Rocket, Puzzle and Keyboard alongside Sparkles, Folder and Calculator. The icon selector shows an immediate visual preview, and the full project preview uses the actual selected artwork. Both admin previews and the public project cards/dialogs use the shared `projectIcons` catalog and `getProjectIcon` helper in `packages/shared/src/project-icons.ts`.
+
+The three original icons retain their exact SVG paths. Stored icon values remain unrestricted by the catalog: unknown values are preserved in the editor with a Current icon option and render a folder fallback. No project content, photos, drafts, production secrets, dependencies or database schema were changed. The user's concurrent Monado II project and screenshot commits were preserved before release.
+
+Validation passed: lint, workspace typechecks, all 94 unit tests, all nine relevant Projects/public browser tests, and both production builds. The new browser flow checks Game controller selection, both previews, draft autosave/reopening, Markdown serialization, publishing and published reopening. All 21 icons were visually checked in light/dark contexts; editor screenshots at 1280px and 390px were inspected. Production checks must continue to avoid creating test projects or selecting an icon on the user's behalf.
+
+Code release: `1022c40ccaa2a471000ff3e6f260cf75a5c74b8d`. [GitHub Pages run 44453540982](https://github.com/brendonbusker/brendonbusker.github.io/actions/runs/44453540982) succeeded and the live `/deployment.json` matched that exact commit. All four project cards and modal icons were preserved; Monado II's uploaded screenshot matched the repository bytes. The user renewed Wrangler OAuth login, and the account was confirmed against the existing admin origin and database bindings. The admin was deployed as Worker version `8163d16e-1d7e-4b09-b1ce-f68135c9875b`. Live HTML, entry/ProjectEditor/save-status JavaScript and CSS matched the local build; HTML remained `no-cache`, and the published-projects API still required authentication. No production test content was created. An already-open admin tab needs a refresh to load the new choices; let pending uploads and draft saves finish first.
 
 ## Read this first
 
