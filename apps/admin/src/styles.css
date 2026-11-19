@@ -742,6 +742,32 @@ select {
   display: flex;
   gap: 20px;
 }
+.project-icon-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.project-icon-sample {
+  display: grid;
+  place-items: center;
+  flex: 0 0 40px;
+  height: 40px;
+  color: var(--admin-text);
+  background: var(--admin-surface-alt);
+  border: 1px solid var(--admin-border-strong);
+  border-radius: 4px;
+}
+.project-icon-picker select {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 6px 8px;
+  color: var(--admin-text);
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border-strong);
+  border-radius: 4px;
+}
 .section-heading {
   display: flex;
   justify-content: space-between;

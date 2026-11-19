@@ -4,3 +4,4 @@ export * from './markdown';
 export * from './auth';
 export * from './dates';
 export * from './media';
+export * from './project-icons';

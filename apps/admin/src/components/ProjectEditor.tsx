@@ -16,6 +16,8 @@ import {
   Send20Regular,
 } from "@fluentui/react-icons";
 import {
+  getProjectIcon,
+  projectIcons,
   projectPageSchema,
   projectSchema,
   slugify,
@@ -35,6 +37,30 @@ const initialProjectPage: ProjectPage = {
   description:
     "Applications and experiments that began with a problem worth understanding.",
 };
+
+function ProjectIcon({ name, size = 28 }: { name: string; size?: number }) {
+  const icon = getProjectIcon(name);
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role="img"
+      aria-label={`${icon.label} icon`}
+      data-project-icon={icon.value}
+      focusable="false"
+    >
+      {icon.paths.map((d, index) => (
+        <path key={index} d={d} />
+      ))}
+    </svg>
+  );
+}
 
 function ProjectPageEditor({ onBack }: { onBack: () => void }) {
   const [value, setValue] = useState<ProjectPage>(initialProjectPage);
@@ -449,7 +475,7 @@ export function ProjectEditor() {
               />
             )}
             <div className="preview-icon" style={{ background: value.accent }}>
-              ⌗
+              <ProjectIcon name={value.icon} size={32} />
             </div>
             <p>
               {value.category} · {value.status}
@@ -527,14 +553,27 @@ export function ProjectEditor() {
             </div>
             <div className="two-fields">
               <Field label="Icon">
-                <select
-                  value={value.icon}
-                  onChange={(e) => set("icon", e.target.value)}
-                >
-                  <option value="calculator">Calculator</option>
-                  <option value="sparkles">Sparkles</option>
-                  <option value="folder">Folder</option>
-                </select>
+                <div className="project-icon-picker">
+                  <span className="project-icon-sample">
+                    <ProjectIcon name={value.icon} />
+                  </span>
+                  <select
+                    aria-label="Icon"
+                    value={value.icon}
+                    onChange={(e) => set("icon", e.target.value)}
+                  >
+                    {!projectIcons.some((icon) => icon.value === value.icon) && (
+                      <option value={value.icon}>
+                        Current icon ({value.icon})
+                      </option>
+                    )}
+                    {projectIcons.map((icon) => (
+                      <option key={icon.value} value={icon.value}>
+                        {icon.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </Field>
               <Field label="Accent color">
                 <input

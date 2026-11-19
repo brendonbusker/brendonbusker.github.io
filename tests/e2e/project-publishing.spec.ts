@@ -91,6 +91,9 @@ async function setup(page: Page, existing = false) {
       expect(parseManagedMarkdown(serialized.content).data.published).toBe(
         body.payload.published,
       );
+      expect(parseManagedMarkdown(serialized.content).data.icon).toBe(
+        body.payload.icon,
+      );
       state.item = {
         content: body.payload,
         path: serialized.path,
@@ -239,4 +242,83 @@ test("a failed draft save does not publish or lose project edits", async ({
   await expect(
     page.getByRole("button", { name: "Publish", exact: true }),
   ).toBeEnabled();
+});
+
+test("project icon selection previews the actual icon and survives autosave, publishing and reopening", async ({
+  page,
+}) => {
+  const state = await setup(page, true);
+  const iconSelect = page.getByRole("combobox", { name: "Icon", exact: true });
+  await expect(iconSelect).toHaveValue("folder");
+  const folderShape = await page
+    .getByRole("img", { name: "Folder icon", exact: true })
+    .locator("path")
+    .evaluateAll((paths) => paths.map((path) => path.getAttribute("d")));
+  for (const label of ["Calculator", "Sparkles", "Folder", "Game controller"])
+    await expect(
+      iconSelect.getByRole("option", { name: label, exact: true }),
+    ).toHaveCount(1);
+
+  await iconSelect.selectOption({ label: "Game controller" });
+  await expect(iconSelect).toHaveValue("gamepad");
+  const gamepadPreview = page.getByRole("img", {
+    name: "Game controller icon",
+    exact: true,
+  });
+  await expect(gamepadPreview).toBeVisible();
+  await expect(gamepadPreview).toHaveAttribute("data-project-icon", "gamepad");
+  const gamepadShape = await gamepadPreview
+    .locator("path")
+    .evaluateAll((paths) => paths.map((path) => path.getAttribute("d")));
+  expect(gamepadShape.length).toBeGreaterThan(0);
+  expect(gamepadShape.every(Boolean)).toBe(true);
+  expect(gamepadShape).not.toEqual(folderShape);
+
+  // Wait for the real autosave timer: navigating early would discard this edit.
+  await expect
+    .poll(() => state.drafts.get(original.slug)?.icon)
+    .toBe("gamepad");
+  expect(state.writes).toHaveLength(0);
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await page.getByRole("button", { name: "Projects", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Choose a project to edit" })
+    .selectOption(original.slug);
+  await expect(iconSelect).toHaveValue("gamepad");
+  await expect(gamepadPreview).toBeVisible();
+
+  await page.getByRole("button", { name: "Preview", exact: true }).click();
+  const fullPreview = page.locator(".project-preview .preview-icon");
+  await expect(
+    fullPreview.getByRole("img", { name: "Game controller icon", exact: true }),
+  ).toBeVisible();
+  expect(
+    await fullPreview
+      .locator("path")
+      .evaluateAll((paths) => paths.map((path) => path.getAttribute("d"))),
+  ).toEqual(gamepadShape);
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Hide from website", exact: true }),
+  ).toBeEnabled();
+  expect(state.writes).toHaveLength(1);
+  expect(state.writes[0]).toMatchObject({
+    expectedSha: "original-sha",
+    targetPath: "apps/site/src/content/projects/hidden-project.md",
+    payload: {
+      ...original,
+      icon: "gamepad",
+      published: true,
+      updatedAt: expect.any(String),
+    },
+  });
+  expect(state.drafts.size).toBe(0);
+
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await page.getByRole("button", { name: "Projects", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Choose a project to edit" })
+    .selectOption(original.slug);
+  await expect(iconSelect).toHaveValue("gamepad");
+  await expect(gamepadPreview).toBeVisible();
 });
